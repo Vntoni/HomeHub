@@ -20,8 +20,14 @@
 - Add tests
 
   
-In Progress... 
+Project In Progress... 
 
-
+**Main Widnow:**
 <img width="1199" height="717" alt="image" src="https://github.com/user-attachments/assets/781f5cf8-bc97-4be5-a25b-8237781b3214" />
+
+**Popup for AC units:**
+<img width="1275" height="711" alt="image" src="https://github.com/user-attachments/assets/fa893760-ef19-4e2c-ac99-6f0dacb7fad5" />
+
+**Popup for Water Heater:**
+<img width="1270" height="703" alt="image" src="https://github.com/user-attachments/assets/954fbc09-26bc-4729-ae75-a8e2870d2dbb" />
 
