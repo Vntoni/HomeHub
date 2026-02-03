@@ -34,25 +34,26 @@ class AirstageACAdapter(ACUnitPort):
     def get_economy_mode(self) -> bool:
         return self._impl.get_economy_mode()
 
-    async def set_economy_mode(self, mode: bool) -> None:
+    async def set_economy_mode(self, mode: str) -> None:
         await self._impl.set_economy_mode(mode)
 
     def get_powerful_mode(self) -> bool:
         return self._impl.get_powerful_mode()
 
-    async def set_powerful_mode(self, mode: bool) -> None:
+    async def set_powerful_mode(self, mode: str) -> None:
         await self._impl.set_powerful_mode(mode)
 
     def get_outdoor_low_noise(self) -> bool:
         return self._impl.get_outdoor_low_noise()
 
-    async def set_outdoor_low_noise(self, mode: bool) -> None:
+    async def set_outdoor_low_noise(self, mode: str) -> None:
+        print(f"W koncu mode: {mode}")
         await self._impl.set_outdoor_low_noise(mode)
 
     def get_operating_mode(self) -> str:
         return getattr(self._impl.get_operating_mode(), "value", "UNKNOWN")
 
-    async def set_operation_mode(self, mode: int) -> None:
+    async def set_operation_mode(self, mode: str) -> None:
         await self._impl.set_operation_mode(mode)
 
 

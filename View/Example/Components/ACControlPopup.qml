@@ -277,11 +277,11 @@ Popup {
             font.pixelSize: 16
             Layout.fillWidth: true
             onClicked: {
-                backend.set_temperature(room, control.value)
+                backend.set_target_temp(room, control.value)
                 backend.set_mode_operation(room, currentMode)
-                backend.set_economy(room, econButton.checked)
-                backend.set_powerful(room, powerButton.checked)
-                backend.set_low_noise(room, lowNoiseButton.checked)
+                backend.set_economy(room, econButton.checked ? "ON" : "OFF")
+                backend.set_powerful(room, powerButton.checked ? "ON" : "OFF")
+                backend.set_low_noise(room, lowNoiseButton.checked ? "ON" : "OFF")
             }
             Material.background: "#29d884"
             Material.foreground: "#0f1217"

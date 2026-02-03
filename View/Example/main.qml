@@ -19,6 +19,10 @@ ApplicationWindow {
 
 
 
+    Component.onCompleted: {
+        console.log("APP WINDOW SIZE:", width, height)
+    }
+
 
 
         ACControlPopup {

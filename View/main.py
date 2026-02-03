@@ -24,7 +24,7 @@ qInstallMessageHandler(messageHandler)
 
 def main():
     # Poprawka: nie nadpisuj jednej zmiennej dwukrotnie
-    os.environ["QT_LOGGING_RULES"] = "qt.qml=true; qt.quick=true; *.debug=true"
+    os.environ["QT_LOGGING_RULES"] = "qt.qml=true; qt.quick=true;"
 
     app = QGuiApplication(sys.argv)
     loop = QEventLoop(app)

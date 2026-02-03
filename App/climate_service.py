@@ -1,4 +1,7 @@
 from typing import Dict
+
+from pyairstage.constants import OperationMode, BooleanProperty
+
 from Ports.ac import ACUnitPort
 
 class ClimateService:
@@ -32,25 +35,30 @@ class ClimateService:
     def economy(self, room: str) -> bool:
         return self._get(room).get_economy_mode()
 
-    async def set_economy(self, room: str, mode: bool) -> None:
+    async def set_economy(self, room: str, mode: str) -> None:
+        mode = BooleanProperty[mode]
         await self._get(room).set_economy_mode(mode)
 
     def powerful(self, room: str) -> bool:
         return self._get(room).get_powerful_mode()
 
-    async def set_powerful(self, room: str, mode: bool) -> None:
+    async def set_powerful(self, room: str, mode: str) -> None:
+        mode = BooleanProperty[mode]
         await self._get(room).set_powerful_mode(mode)
 
     def low_noise(self, room: str) -> bool:
         return self._get(room).get_outdoor_low_noise()
 
-    async def set_low_noise(self, room: str, mode: bool) -> None:
+    async def set_low_noise(self, room: str, mode: str) -> None:
+        mode = BooleanProperty[mode]
+        print(f"Setting low noise for room: {room} with mode: {mode}")
         await self._get(room).set_outdoor_low_noise(mode)
 
     def operating_mode(self, room: str) -> str:
         return self._get(room).get_operating_mode()
 
-    async def set_operating_mode(self, room: str, mode: int) -> None:
+    async def set_operating_mode(self, room: str, mode: str) -> None:
+        mode = OperationMode[mode]
         await self._get(room).set_operation_mode(mode)
 
     def online_map(self) -> dict:

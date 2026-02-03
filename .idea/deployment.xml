@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="miggie@192.168.100.35:22 password" remoteFilesAllowedToDisappearOnAutoupload="false" showEqualInSync="true">
+    <serverData>
+      <paths name="RPI5">
+        <serverdata>
+          <mappings>
+            <mapping deploy="home/miggie/Baza_Domowa" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="miggie@192.168.100.35:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="home/miggie/Baza_Domowa" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

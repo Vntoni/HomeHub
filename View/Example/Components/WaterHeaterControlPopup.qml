@@ -130,7 +130,7 @@ Popup {
                 id: econButton
                 checkable: true
                 checked: initialGreen
-                text: "Tryb ekonomiczny"
+                text: "Eco Mode"
                 font.pixelSize: 18
                 Layout.fillWidth: true
                 Layout.preferredHeight: 68
@@ -202,9 +202,9 @@ Popup {
                 else if (boostButton.checked) backend.set_water_heater_mode("BOOST")
                 messageDialog.open()
             }
-            Material.background: Material.accent
-            Material.foreground: Material.White
-            Material.elevation: 3
+            Material.background: "#29d884"
+            Material.foreground: "#0f1217"
+            Material.elevation: 4
         }
     }
 
