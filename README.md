@@ -29,5 +29,6 @@ Project In Progress...
 <img width="1275" height="711" alt="image" src="https://github.com/user-attachments/assets/fa893760-ef19-4e2c-ac99-6f0dacb7fad5" />
 
 **Popup for Water Heater:**
-<img width="1270" height="703" alt="image" src="https://github.com/user-attachments/assets/954fbc09-26bc-4729-ae75-a8e2870d2dbb" />
+<img width="1273" height="714" alt="image" src="https://github.com/user-attachments/assets/cf4fd5d7-e49e-4c54-a012-da29fad075c1" />
+
 
