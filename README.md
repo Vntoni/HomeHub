@@ -1,4 +1,4 @@
-**Home Station**
+**HomeHub App**
 
 **HW**: Rasperry Pi 5, Raspberry Pi Touch Display 2 (7'')
 
@@ -13,11 +13,11 @@
 - Waher Machine (BLE connection, Check state of washing (on/off), check and display washing time) ✔
 - Power consumption (API connection, get and save the data of hourly, daily, and monthly power consumption) ❌
 - Weather station (Build and connect to small wather/garden station to read data from sensors(air pollution, humidity, temperature) ❌
-- PV panels (get and save the data of Power production from PV panels) ❌
 
 **Further plans to develop**:
+- Add tests (pytest)
+- CI/CD (github actions)
 - AI voice agent integration - controlling the APP through voice
-- Add tests
 
   
 Project In Progress... 
@@ -29,5 +29,6 @@ Project In Progress...
 <img width="1275" height="711" alt="image" src="https://github.com/user-attachments/assets/fa893760-ef19-4e2c-ac99-6f0dacb7fad5" />
 
 **Popup for Water Heater:**
-<img width="1270" height="703" alt="image" src="https://github.com/user-attachments/assets/954fbc09-26bc-4729-ae75-a8e2870d2dbb" />
+<img width="1273" height="714" alt="image" src="https://github.com/user-attachments/assets/cf4fd5d7-e49e-4c54-a012-da29fad075c1" />
+
 
