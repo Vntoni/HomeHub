@@ -1,6 +1,6 @@
 from typing import Any
 from Ports.ac import ACUnitPort
-from pyairstage.airstageAC import AirstageAC, ApiCloud
+from pyairstage.airstageAC import AirstageAC, ApiCloud, BooleanDescriptors
 
 class AirstageACAdapter(ACUnitPort):
     def __init__(self, device_id: str, api_cloud: Any, impl_cls):
@@ -31,7 +31,7 @@ class AirstageACAdapter(ACUnitPort):
     async def set_target_temperature(self, temp: float) -> None:
         await self._impl.set_target_temperature(temp)
 
-    def get_economy_mode(self) -> bool:
+    def get_economy_mode(self) -> BooleanDescriptors:
         return self._impl.get_economy_mode()
 
     async def set_economy_mode(self, mode: str) -> None:
@@ -47,7 +47,6 @@ class AirstageACAdapter(ACUnitPort):
         return self._impl.get_outdoor_low_noise()
 
     async def set_outdoor_low_noise(self, mode: str) -> None:
-        print(f"W koncu mode: {mode}")
         await self._impl.set_outdoor_low_noise(mode)
 
     def get_operating_mode(self) -> str:

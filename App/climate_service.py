@@ -1,6 +1,6 @@
 from typing import Dict
 
-from pyairstage.constants import OperationMode, BooleanProperty
+from pyairstage.constants import OperationMode, BooleanProperty, BooleanDescriptors
 
 from Ports.ac import ACUnitPort
 
@@ -32,14 +32,14 @@ class ClimateService:
     async def set_target_temp(self, room: str, temp: float) -> None:
         await self._get(room).set_target_temperature(temp)
 
-    def economy(self, room: str) -> bool:
+    def economy(self, room: str) -> BooleanDescriptors:
         return self._get(room).get_economy_mode()
 
     async def set_economy(self, room: str, mode: str) -> None:
         mode = BooleanProperty[mode]
         await self._get(room).set_economy_mode(mode)
 
-    def powerful(self, room: str) -> bool:
+    def powerful(self, room: str) -> BooleanDescriptors:
         return self._get(room).get_powerful_mode()
 
     async def set_powerful(self, room: str, mode: str) -> None:
