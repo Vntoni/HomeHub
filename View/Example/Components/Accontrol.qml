@@ -497,24 +497,15 @@ Rectangle {
         }
 
     }
-RowLayout {
-            id: washerRow
-            Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 0
-            // “puste” miejsce po lewej, żeby badge trzymał się prawej strony
-            Item { Layout.fillWidth: true }
+    // Pralka na dole - wycentrowana
+    WasherMachine {
+        id: washerBadge
+        showWhenIdle: true
+        Layout.alignment: Qt.AlignHCenter
+        Layout.topMargin: 10
+    }
 
-            WasherMachine {
-                id: washerBadge
-                showWhenIdle: true
-                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                Layout.rightMargin: 1
-
-
-            }
-        }
-        }
+    }  // Zamknięcie mainCol ColumnLayout
 
     Connections {
         target: backend
@@ -561,6 +552,8 @@ RowLayout {
 
 }
 }
+
+
 
 
 

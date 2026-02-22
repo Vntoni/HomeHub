@@ -9,5 +9,7 @@
         <file alias="boiler_128.png">C:\Users\85faht\Baza_Domowa\View\images\128\boiler.png</file>
         <file alias="air-conditioner_128.png">C:\Users\85faht\Baza_Domowa\View\images\128\air-conditioner.png</file>
         <file alias="laundry-machine_128.png">C:\Users\85faht\Baza_Domowa\View\images\128\laundry-machine.png</file>
+        <file alias="heater_128.png">C:\Users\85faht\Baza_Domowa\View\images\128\device.png</file>
+        <file alias="heater_128_2.png">C:\Users\85faht\Baza_Domowa\View\images\128\heater.png</file>
     </qresource>
 </RCC>

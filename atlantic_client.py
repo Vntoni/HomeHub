@@ -46,6 +46,8 @@ class AtlanticCozytouchClient:
         self.scope = scope
         self.access_token: Optional[str] = None
         self.devices: List[Dict] = []
+        self._login_attempts = 0  # Licznik prób logowania (zapobieganie infinite loop)
+        self._max_login_attempts = 3  # Maksymalna liczba prób
 
         self.headers = {
             "User-Agent": "cozytouch-ios-v3.25.0",
@@ -83,24 +85,55 @@ class AtlanticCozytouchClient:
             if response.status_code == 200:
                 data = response.json()
                 self.access_token = data.get("access_token")
+                self._login_attempts = 0  # Reset counter po sukcesie
+                print("[Atlantic API] ✓ Login successful, token refreshed")
                 return True
             else:
-                print(f"Login failed: {response.status_code} - {response.text}")
+                print(f"[Atlantic API] ✗ Login failed: {response.status_code} - {response.text}")
                 return False
 
         except Exception as e:
-            print(f"Login error: {e}")
+            print(f"[Atlantic API] ✗ Login error: {e}")
             return False
+
+    def _ensure_logged_in(self) -> bool:
+        """
+        Upewnij się że jesteśmy zalogowani (automatyczne re-login jeśli potrzeba)
+
+        Returns:
+            True jeśli zalogowany (lub udało się zalogować), False jeśli błąd
+        """
+        if not self.access_token:
+            print("[Atlantic API] No token, logging in...")
+            return self.login()
+        return True
+
+    def _handle_auth_error(self) -> bool:
+        """
+        Obsłuż błąd autoryzacji (401) - spróbuj zalogować się ponownie
+
+        Returns:
+            True jeśli udało się zalogować ponownie, False jeśli nie
+        """
+        self._login_attempts += 1
+
+        if self._login_attempts > self._max_login_attempts:
+            print(f"[Atlantic API] ✗ Max login attempts ({self._max_login_attempts}) reached")
+            return False
+
+        print(f"[Atlantic API] Token expired (401), re-authenticating... (attempt {self._login_attempts}/{self._max_login_attempts})")
+        self.access_token = None  # Wyczyść stary token
+        return self.login()
 
     def get_devices(self) -> List[Dict]:
         """
-        Pobierz listę urządzeń
+        Pobierz listę urządzeń (z automatycznym re-login jeśli token wygasł)
 
         Returns:
             Lista urządzeń (słowników)
         """
-        if not self.access_token:
-            raise RuntimeError("Not logged in. Call login() first.")
+        if not self._ensure_logged_in():
+            return []
 
         url = f"{self.BASE_URL}/magellan/cozytouch/setupviewv2"
 
@@ -109,6 +142,16 @@ class AtlanticCozytouchClient:
 
         try:
             response = requests.get(url, headers=headers, timeout=30)
+
+            # Obsługa wygasłego tokena (401)
+            if response.status_code == 401:
+                print("[Atlantic API] Got 401 in get_devices, token expired")
+                if self._handle_auth_error():
+                    # Retry po ponownym zalogowaniu
+                    headers["Authorization"] = f"Bearer {self.access_token}"
+                    response = requests.get(url, headers=headers, timeout=30)
+                else:
+                    return []
 
             if response.status_code == 200:
                 setup_data = response.json()
@@ -122,11 +165,11 @@ class AtlanticCozytouchClient:
                 self.devices = setup.get('devices', [])
                 return self.devices
             else:
-                print(f"Get devices failed: {response.status_code}")
+                print(f"[Atlantic API] Get devices failed: {response.status_code}")
                 return []
 
         except Exception as e:
-            print(f"Get devices error: {e}")
+            print(f"[Atlantic API] Get devices error: {e}")
             return []
 
     def set_capability(self, device_id: int, capability_id: int, value: str) -> bool:
@@ -150,8 +193,8 @@ class AtlanticCozytouchClient:
         Returns:
             True jeśli sukces, False jeśli błąd
         """
-        if not self.access_token:
-            raise RuntimeError("Not logged in. Call login() first.")
+        if not self._ensure_logged_in():
+            return False
 
         # Endpoint znaleziony w sniffingu!
         url = f"{self.BASE_URL}/magellan/executions/writecapability"
@@ -171,6 +214,16 @@ class AtlanticCozytouchClient:
             # Krok 1: Wyślij request writecapability
             response = requests.post(url, json=payload, headers=headers, timeout=30)
 
+            # Obsługa wygasłego tokena (401)
+            if response.status_code == 401:
+                print(f"[Atlantic API] Got 401 in set_capability (cap {capability_id}), token expired")
+                if self._handle_auth_error():
+                    # Retry po ponownym zalogowaniu
+                    headers["Authorization"] = f"Bearer {self.access_token}"
+                    response = requests.post(url, json=payload, headers=headers, timeout=30)
+                else:
+                    return False
+
             if response.status_code == 201:
                 # Zwraca execution ID
                 try:
@@ -186,21 +239,38 @@ class AtlanticCozytouchClient:
                 if execution_id:
                     # Krok 2: Sprawdź status wykonania
                     import time
-                    max_attempts = 10
+                    max_attempts = 20  # Zwiększono z 10 do 20
+                    wait_interval = 0.75  # Zwiększono z 0.5s do 0.75s
+                    # Razem: 20 × 0.75s = 15 sekund (było 5s)
 
                     for attempt in range(max_attempts):
-                        time.sleep(0.5)  # Odczekaj 0.5s między próbami
+                        time.sleep(wait_interval)
 
                         status_url = f"{self.BASE_URL}/magellan/executions/{execution_id}"
                         status_response = requests.get(status_url, headers=headers, timeout=30)
+
+                        # Obsługa 401 podczas sprawdzania statusu
+                        if status_response.status_code == 401:
+                            print(f"  [Atlantic API] Got 401 while checking execution status")
+                            if self._handle_auth_error():
+                                # Odśwież token w headers i spróbuj ponownie
+                                headers["Authorization"] = f"Bearer {self.access_token}"
+                                status_response = requests.get(status_url, headers=headers, timeout=30)
+                            else:
+                                # Nie udało się zalogować ponownie
+                                return False
 
                         if status_response.status_code == 200:
                             try:
                                 status_data = status_response.json()
                                 state = status_data.get('state', 'UNKNOWN')
 
+                                # Debug: wyświetl szczegóły tylko przy problemach
+                                if attempt > 5:  # Po 5 próbach
+                                    print(f"  [Attempt {attempt+1}/{max_attempts}] Execution {execution_id}: state={state}")
+
                                 # State może być liczbą lub stringiem
-                                # Z logów: 2 = IN_PROGRESS, 3 = COMPLETED (prawdopodobnie)
+                                # Z logów: 2 = IN_PROGRESS, 3 = COMPLETED
                                 if state in ['COMPLETED', 3, '3']:
                                     # Sukces!
                                     return True
@@ -209,20 +279,24 @@ class AtlanticCozytouchClient:
                                     continue
                                 elif state in ['FAILED', 'ERROR', 0, '0']:
                                     # Błąd
-                                    print(f"Execution failed: {status_data}")
+                                    print(f"Execution {execution_id} FAILED: {status_data}")
                                     return False
                                 else:
-                                    # Nieznany stan - ale może to sukces?
-                                    # Jeśli to ostatnia próba, uznajmy za sukces
+                                    # Nieznany stan
+                                    print(f"  Unknown state {state} for execution {execution_id}, waiting...")
+                                    # Jeśli to ostatnia próba, uznajmy za sukces (może API jest wolne)
                                     if attempt >= max_attempts - 1:
+                                        print(f"  Max attempts reached, assuming success for execution {execution_id}")
                                         return True
                                     continue
-                            except:
+                            except Exception as parse_error:
                                 # Błąd parsowania - czekaj
+                                print(f"  Parse error for execution {execution_id}: {parse_error}")
                                 continue
 
                     # Timeout - nie udało się w czasie
-                    print(f"Timeout waiting for execution {execution_id}")
+                    print(f"Timeout waiting for execution {execution_id} (waited {max_attempts * wait_interval}s)")
+                    # Zwróć False - nie możemy być pewni czy się wykonało
                     return False
 
                 # Brak execution ID - ale status 201, uznajemy za sukces
@@ -260,21 +334,31 @@ class AtlanticCozytouchClient:
         if not 7 <= temperature <= 28:
             raise ValueError("Temperature must be between 7 and 28°C")
 
+        print(f"\n[Atlantic API] Setting temperature for device {device_id}:")
+        print(f"  Target: {temperature}°C, Duration: {duration_minutes} min")
+
         # Krok 1: Ustaw czas trwania (capability 158)
+        print(f"  [1/3] Setting duration (cap 158 = {duration_minutes})...")
         if not self.set_capability(device_id, 158, str(duration_minutes)):
-            print("Błąd: Nie udało się ustawić czasu trwania (cap 158)")
+            print("  ✗ Błąd: Nie udało się ustawić czasu trwania (cap 158)")
             return False
+        print("  ✓ Duration set")
 
         # Krok 2: Aktywuj tryb wyjątku (capability 157 = "1")
+        print(f"  [2/3] Activating exception mode (cap 157 = 1)...")
         if not self.set_capability(device_id, 157, "1"):
-            print("Błąd: Nie udało się aktywować wyjątku (cap 157)")
+            print("  ✗ Błąd: Nie udało się aktywować wyjątku (cap 157)")
             return False
+        print("  ✓ Exception activated")
 
         # Krok 3: Ustaw temperaturę (capability 40) - NA KOŃCU!
+        print(f"  [3/3] Setting temperature (cap 40 = {temperature})...")
         if not self.set_capability(device_id, 40, str(temperature)):
-            print("Błąd: Nie udało się ustawić temperatury (cap 40)")
+            print("  ✗ Błąd: Nie udało się ustawić temperatury (cap 40)")
             return False
+        print("  ✓ Temperature set")
 
+        print(f"[Atlantic API] ✓ SUCCESS! Temperature set to {temperature}°C\n")
         return True
 
     def cancel_exception_mode(self, device_id: int) -> bool:
@@ -363,9 +447,34 @@ class AtlanticCozytouchClient:
     # GETTERS - Odczyt stanów
     # ========================================================================
 
+    def reset_auth(self):
+        """
+        Zresetuj autoryzację (wymuś ponowne logowanie przy następnym requestcie)
+
+        Przydatne gdy aplikacja była długo nieużywana lub wiesz że token wygasł.
+        """
+        print("[Atlantic API] Resetting authentication...")
+        self.access_token = None
+        self._login_attempts = 0
+
+    def force_relogin(self) -> bool:
+        """
+        Wymuś ponowne logowanie natychmiast
+
+        Returns:
+            True jeśli sukces, False jeśli błąd
+        """
+        print("[Atlantic API] Forcing re-login...")
+        self.access_token = None
+        self._login_attempts = 0
+        return self.login()
+
     def get_device_capability(self, device_id: int, capability_id: int) -> Optional[str]:
         """
-        Pobierz wartość capability dla urządzenia
+        Pobierz wartość capability z lokalnej cache
+
+        UWAGA: To używa lokalnej cache (self.devices), nie robi requestu do API.
+        Jeśli chcesz świeże dane, wywołaj najpierw get_devices().
 
         Args:
             device_id: ID urządzenia

@@ -22,6 +22,9 @@ Rectangle {
     property bool heaterJurasOnline: true
     property bool heaterMigaczeOnline: true
     property bool heaterJuliaOnline: true
+    property bool heaterJurasisOn: true
+    property bool heaterMigaczeisOn: true
+    property bool heaterJuliaisOn: true
 
     Material.theme: Material.Dark
     Material.accent: Material.Pink
@@ -32,14 +35,17 @@ Rectangle {
         backend.get_heater_current_temp("Juras")
         backend.get_heater_target_temp("Juras")
         backend.get_heater_mode("Juras")
+        backend.get_heater_power("Juras")
 
         backend.get_heater_current_temp("Migacze")
         backend.get_heater_target_temp("Migacze")
         backend.get_heater_mode("Migacze")
+        backend.get_heater_power("Migacze")
 
         backend.get_heater_current_temp("Julia")
         backend.get_heater_target_temp("Julia")
         backend.get_heater_mode("Julia")
+        backend.get_heater_power("Julia")
     }
 
     // Połączenia z backendem - odbieranie sygnałów
@@ -73,6 +79,23 @@ Rectangle {
             else if (room === "Migacze") heaterMigaczeOnline = online
             else if (room === "Julia") heaterJuliaOnline = online
         }
+
+        //Status włączony/wyłączony
+        function onHeaterPowerChanged(room, isOn) {
+            if (room === "Juras") {
+                heaterJurasisOn = isOn
+                jurasControl.checked = isOn
+            }
+            else if (room === "Migacze"){
+                heaterMigaczeisOn = isOn
+                migaczeControl.checked = isOn
+            }
+            else if (room === "Julia"){
+                heaterJuliaisOn = isOn
+                juliaControl.checked = isOn
+                console.log("Julia heater power changed:", isOn)
+            }
+        }
     }
 
     ColumnLayout {
@@ -89,7 +112,7 @@ Rectangle {
             // ============================================
             Rectangle {
                 id: jurasRect
-                width: 280
+                width: 300
                 height: 400
                 color: "#222"
                 radius: 10
@@ -106,26 +129,43 @@ Rectangle {
                     shadowVerticalOffset: 4
                     saturation: 0.2
                 }
+                MultiPointTouchArea {
+                anchors.fill: parent
+                minimumTouchPoints: 1
+                maximumTouchPoints: 1
+
+                property double lastTapTime: 0
+                property double doubleTapThreshold: 400 // ms
+
+                onPressed: {
+                    var currentTime = Date.now();
+                    if (currentTime - lastTapTime < doubleTapThreshold && heaterJurasOnline === true) {
+                        // Double tap detected
+                        heaterPopup.room = "Juras"
+                        heaterPopup.open()
+                    }
+                    lastTapTime = currentTime;
+                }
+            }
+
+                // Nazwa pokoju - POZA ColumnLayout (jak w Downstairs!)
+                Label {
+                    text: "Juras"
+                    color: Material.foreground
+                    font.pixelSize: 30
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: 10
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 15
+                    anchors.topMargin: 50
                     spacing: 10
 
-                    // Nazwa pokoju
-                    Label {
-                        text: "Juras"
-                        color: Material.foreground
-                        font.pixelSize: 28
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    // Temperatura pomieszczenia (aktualna)
                     Label {
                         text: "Room Temperature"
-                        font.pixelSize: 16
+                        font.pixelSize: 21
                         color: "#BBB"
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
@@ -135,67 +175,75 @@ Rectangle {
                         text: heaterJurasOnline ?
                               (isNaN(currentTempJuras) ? "---" : currentTempJuras.toFixed(1) + "°C") :
                               "OFFLINE"
-                        color: heaterJurasOnline ? "#FF9800" : Material.color(Material.Red)
-                        font.pixelSize: 32
+                        color: heaterJurasOnline ? "#17a81a" : Material.color(Material.Red)
+                        font.pixelSize: 34
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    // Separator
-                    Rectangle {
-                        Layout.preferredHeight: 1
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        Layout.rightMargin: 20
-                        color: "#444"
-                    }
-
-                    // Temperatura ustawiona (docelowa)
-                    Label {
-                        text: "Target Temperature"
-                        font.pixelSize: 16
-                        color: "#BBB"
-                        horizontalAlignment: Text.AlignHCenter
+                    Image {
+                        source: "qrc:/icons128/heater_128_2.png"
+                        width: 64
+                        height: 64
+                        fillMode: Image.PreserveAspectFit
                         Layout.alignment: Qt.AlignHCenter
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowOpacity: 0.25
+                            shadowBlur: 0.60
+                            shadowHorizontalOffset: 3
+                            shadowVerticalOffset: 3
+                            saturation: 0.1
+                        }
                     }
 
-                    Label {
-                        text: isNaN(targetTempJuras) ? "---" : targetTempJuras.toFixed(1) + "°C"
-                        color: "#17a81a"
-                        font.pixelSize: 28
-                        horizontalAlignment: Text.AlignHCenter
+                    Switch {
+                        id: jurasControl
+                        enabled: heaterJurasisOn
                         Layout.alignment: Qt.AlignHCenter
-                    }
+                        onToggled: {
+                            jurasControl.checked ? backend.turn_on_heater("Juras") :
+                                backend.turn_off_heater("Juras")
+                        }
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowOpacity: 0.35
+                            shadowBlur: 0.40
+                            shadowHorizontalOffset: 4
+                            shadowVerticalOffset: 3
+                            saturation: 0.1
+                        }
 
-                    // Separator
-                    Rectangle {
-                        Layout.preferredHeight: 1
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        Layout.rightMargin: 20
-                        color: "#444"
-                    }
+                        indicator: Rectangle {
+                            implicitWidth: 48 * 1.5
+                            implicitHeight: 26 * 1.5
+                            x: jurasControl.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 13 * 1.5
+                            color: jurasControl.checked ? "#FF9800" : "#ffffff"
+                            border.color: jurasControl.checked ? "#FF9800" : "#cccccc"
 
-                    // Tryb pracy
-                    Label {
-                        text: "Mode"
-                        font.pixelSize: 16
-                        color: "#BBB"
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
-                    }
+                            Rectangle {
+                                x: jurasControl.checked ? parent.width - width : 0
+                                width: 26 * 1.5
+                                height: 26 * 1.5
+                                radius: 13 * 1.5
+                                color: jurasControl.down ? "#cccccc" : "#ffffff"
+                                border.color: jurasControl.checked ? (jurasControl.down ? "#FF9800" : "#FFA726") : "#999999"
+                            }
+                        }
 
-                    Label {
-                        text: modeJuras === "manual" ? "Manual" :
-                              modeJuras === "program" ? "Program" :
-                              "Unknown"
-                        color: modeJuras === "manual" ? "#2196F3" : "#9C27B0"
-                        font.pixelSize: 20
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
+                        contentItem: Text {
+                            text: jurasControl.text
+                            font: jurasControl.font
+                            opacity: enabled ? 1.0 : 0.3
+                            color: jurasControl.down ? "#FF9800" : "#FFA726"
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: jurasControl.indicator.width + jurasControl.spacing
+                        }
                     }
-
-                    Item { Layout.fillHeight: true }
                 }
 
                 // Timer - odświeżanie co 10 sekund
@@ -206,6 +254,8 @@ Rectangle {
                     onTriggered: {
                         backend.get_heater_current_temp("Juras")
                         backend.get_heater_target_temp("Juras")
+                        backend.get_heater_mode("Juras")
+                        backend.get_heater_power("Juras")
                     }
                 }
             }
@@ -215,7 +265,7 @@ Rectangle {
             // ============================================
             Rectangle {
                 id: migaczeRect
-                width: 280
+                width: 300
                 height: 400
                 color: "#222"
                 radius: 10
@@ -232,26 +282,43 @@ Rectangle {
                     shadowVerticalOffset: 4
                     saturation: 0.2
                 }
+                MultiPointTouchArea {
+                anchors.fill: parent
+                minimumTouchPoints: 1
+                maximumTouchPoints: 1
+
+                property double lastTapTime: 0
+                property double doubleTapThreshold: 400 // ms
+
+                onPressed: {
+                    var currentTime = Date.now();
+                    if (currentTime - lastTapTime < doubleTapThreshold && heaterMigaczeOnline === true) {
+                        // Double tap detected
+                        heaterPopup.room = "Migacze"
+                        heaterPopup.open()
+                    }
+                    lastTapTime = currentTime;
+                }
+            }
+
+                // Nazwa pokoju - POZA ColumnLayout
+                Label {
+                    text: "Migacze"
+                    color: Material.foreground
+                    font.pixelSize: 30
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: 10
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 15
+                    anchors.topMargin: 50
                     spacing: 10
 
-                    // Nazwa pokoju
-                    Label {
-                        text: "Migacze"
-                        color: Material.foreground
-                        font.pixelSize: 28
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    // Temperatura pomieszczenia
                     Label {
                         text: "Room Temperature"
-                        font.pixelSize: 16
+                        font.pixelSize: 21
                         color: "#BBB"
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
@@ -261,67 +328,75 @@ Rectangle {
                         text: heaterMigaczeOnline ?
                               (isNaN(currentTempMigacze) ? "---" : currentTempMigacze.toFixed(1) + "°C") :
                               "OFFLINE"
-                        color: heaterMigaczeOnline ? "#FF9800" : Material.color(Material.Red)
-                        font.pixelSize: 32
+                        color: heaterMigaczeOnline ? "#17a81a" : Material.color(Material.Red)
+                        font.pixelSize: 34
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    // Separator
-                    Rectangle {
-                        Layout.preferredHeight: 1
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        Layout.rightMargin: 20
-                        color: "#444"
-                    }
-
-                    // Temperatura ustawiona
-                    Label {
-                        text: "Target Temperature"
-                        font.pixelSize: 16
-                        color: "#BBB"
-                        horizontalAlignment: Text.AlignHCenter
+                    Image {
+                        source: "qrc:/icons128/heater_128_2.png"
+                        width: 64
+                        height: 64
+                        fillMode: Image.PreserveAspectFit
                         Layout.alignment: Qt.AlignHCenter
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowOpacity: 0.25
+                            shadowBlur: 0.60
+                            shadowHorizontalOffset: 3
+                            shadowVerticalOffset: 3
+                            saturation: 0.1
+                        }
                     }
 
-                    Label {
-                        text: isNaN(targetTempMigacze) ? "---" : targetTempMigacze.toFixed(1) + "°C"
-                        color: "#17a81a"
-                        font.pixelSize: 28
-                        horizontalAlignment: Text.AlignHCenter
+                    Switch {
+                        id: migaczeControl
+                        enabled: heaterMigaczeisOn
                         Layout.alignment: Qt.AlignHCenter
-                    }
+                        onToggled: {
+                            migaczeControl.checked ? backend.turn_on_heater("Migacze") :
+                                backend.turn_off_heater("Migacze")
+                        }
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowOpacity: 0.35
+                            shadowBlur: 0.40
+                            shadowHorizontalOffset: 4
+                            shadowVerticalOffset: 3
+                            saturation: 0.1
+                        }
 
-                    // Separator
-                    Rectangle {
-                        Layout.preferredHeight: 1
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        Layout.rightMargin: 20
-                        color: "#444"
-                    }
+                        indicator: Rectangle {
+                            implicitWidth: 48 * 1.5
+                            implicitHeight: 26 * 1.5
+                            x: migaczeControl.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 13 * 1.5
+                            color: migaczeControl.checked ? "#FF9800" : "#ffffff"
+                            border.color: migaczeControl.checked ? "#FF9800" : "#cccccc"
 
-                    // Tryb pracy
-                    Label {
-                        text: "Mode"
-                        font.pixelSize: 16
-                        color: "#BBB"
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
-                    }
+                            Rectangle {
+                                x: migaczeControl.checked ? parent.width - width : 0
+                                width: 26 * 1.5
+                                height: 26 * 1.5
+                                radius: 13 * 1.5
+                                color: migaczeControl.down ? "#cccccc" : "#ffffff"
+                                border.color: migaczeControl.checked ? (migaczeControl.down ? "#FF9800" : "#FFA726") : "#999999"
+                            }
+                        }
 
-                    Label {
-                        text: modeMigacze === "manual" ? "Manual" :
-                              modeMigacze === "program" ? "Program" :
-                              "Unknown"
-                        color: modeMigacze === "manual" ? "#2196F3" : "#9C27B0"
-                        font.pixelSize: 20
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
+                        contentItem: Text {
+                            text: migaczeControl.text
+                            font: migaczeControl.font
+                            opacity: enabled ? 1.0 : 0.3
+                            color: migaczeControl.down ? "#FF9800" : "#FFA726"
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: migaczeControl.indicator.width + migaczeControl.spacing
+                        }
                     }
-
-                    Item { Layout.fillHeight: true }
                 }
 
                 // Timer
@@ -332,6 +407,8 @@ Rectangle {
                     onTriggered: {
                         backend.get_heater_current_temp("Migacze")
                         backend.get_heater_target_temp("Migacze")
+                        backend.get_heater_mode("Migacze")
+                        backend.get_heater_power("Migacze")
                     }
                 }
             }
@@ -341,7 +418,7 @@ Rectangle {
             // ============================================
             Rectangle {
                 id: juliaRect
-                width: 280
+                width: 300
                 height: 400
                 color: "#222"
                 radius: 10
@@ -358,26 +435,43 @@ Rectangle {
                     shadowVerticalOffset: 4
                     saturation: 0.2
                 }
+                MultiPointTouchArea {
+                anchors.fill: parent
+                minimumTouchPoints: 1
+                maximumTouchPoints: 1
+
+                property double lastTapTime: 0
+                property double doubleTapThreshold: 400 // ms
+
+                onPressed: {
+                    var currentTime = Date.now();
+                    if (currentTime - lastTapTime < doubleTapThreshold && heaterJuliaOnline === true) {
+                        // Double tap detected
+                        heaterPopup.room = "Julia"
+                        heaterPopup.open()
+                    }
+                    lastTapTime = currentTime;
+                }
+            }
+
+                // Nazwa pokoju - POZA ColumnLayout
+                Label {
+                    text: "Julia"
+                    color: Material.foreground
+                    font.pixelSize: 30
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: 10
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 15
+                    anchors.topMargin: 50
                     spacing: 10
 
-                    // Nazwa pokoju
-                    Label {
-                        text: "Julia"
-                        color: Material.foreground
-                        font.pixelSize: 28
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-
-                    // Temperatura pomieszczenia
                     Label {
                         text: "Room Temperature"
-                        font.pixelSize: 16
+                        font.pixelSize: 21
                         color: "#BBB"
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
@@ -387,67 +481,75 @@ Rectangle {
                         text: heaterJuliaOnline ?
                               (isNaN(currentTempJulia) ? "---" : currentTempJulia.toFixed(1) + "°C") :
                               "OFFLINE"
-                        color: heaterJuliaOnline ? "#FF9800" : Material.color(Material.Red)
-                        font.pixelSize: 32
+                        color: heaterJuliaOnline ? "#17a81a" : Material.color(Material.Red)
+                        font.pixelSize: 34
                         horizontalAlignment: Text.AlignHCenter
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    // Separator
-                    Rectangle {
-                        Layout.preferredHeight: 1
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        Layout.rightMargin: 20
-                        color: "#444"
-                    }
-
-                    // Temperatura ustawiona
-                    Label {
-                        text: "Target Temperature"
-                        font.pixelSize: 16
-                        color: "#BBB"
-                        horizontalAlignment: Text.AlignHCenter
+                    Image {
+                        source: "qrc:/icons128/heater_128_2.png"
+                        width: 64
+                        height: 64
+                        fillMode: Image.PreserveAspectFit
                         Layout.alignment: Qt.AlignHCenter
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowOpacity: 0.25
+                            shadowBlur: 0.60
+                            shadowHorizontalOffset: 3
+                            shadowVerticalOffset: 3
+                            saturation: 0.1
+                        }
                     }
 
-                    Label {
-                        text: isNaN(targetTempJulia) ? "---" : targetTempJulia.toFixed(1) + "°C"
-                        color: "#17a81a"
-                        font.pixelSize: 28
-                        horizontalAlignment: Text.AlignHCenter
+                    Switch {
+                        id: juliaControl
+                        enabled: heaterJuliaisOn
                         Layout.alignment: Qt.AlignHCenter
-                    }
+                        onToggled: {
+                            juliaControl.checked ? backend.turn_on_heater("Julia") :
+                                backend.turn_off_heater("Julia")
+                        }
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowOpacity: 0.35
+                            shadowBlur: 0.40
+                            shadowHorizontalOffset: 4
+                            shadowVerticalOffset: 3
+                            saturation: 0.1
+                        }
 
-                    // Separator
-                    Rectangle {
-                        Layout.preferredHeight: 1
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        Layout.rightMargin: 20
-                        color: "#444"
-                    }
+                        indicator: Rectangle {
+                            implicitWidth: 48 * 1.5
+                            implicitHeight: 26 * 1.5
+                            x: juliaControl.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 13 * 1.5
+                            color: juliaControl.checked ? "#FF9800" : "#ffffff"
+                            border.color: juliaControl.checked ? "#FF9800" : "#cccccc"
 
-                    // Tryb pracy
-                    Label {
-                        text: "Mode"
-                        font.pixelSize: 16
-                        color: "#BBB"
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
-                    }
+                            Rectangle {
+                                x: juliaControl.checked ? parent.width - width : 0
+                                width: 26 * 1.5
+                                height: 26 * 1.5
+                                radius: 13 * 1.5
+                                color: juliaControl.down ? "#cccccc" : "#ffffff"
+                                border.color: juliaControl.checked ? (juliaControl.down ? "#FF9800" : "#FFA726") : "#999999"
+                            }
+                        }
 
-                    Label {
-                        text: modeJulia === "manual" ? "Manual" :
-                              modeJulia === "program" ? "Program" :
-                              "Unknown"
-                        color: modeJulia === "manual" ? "#2196F3" : "#9C27B0"
-                        font.pixelSize: 20
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
+                        contentItem: Text {
+                            text: juliaControl.text
+                            font: juliaControl.font
+                            opacity: enabled ? 1.0 : 0.3
+                            color: juliaControl.down ? "#FF9800" : "#FFA726"
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: juliaControl.indicator.width + juliaControl.spacing
+                        }
                     }
-
-                    Item { Layout.fillHeight: true }
                 }
 
                 // Timer
@@ -458,9 +560,17 @@ Rectangle {
                     onTriggered: {
                         backend.get_heater_current_temp("Julia")
                         backend.get_heater_target_temp("Julia")
+                        backend.get_heater_mode("Julia")
+                        backend.get_heater_power("Julia")
                     }
                 }
             }
+        }
+
+        // Pusty element na dole - wyrównanie z Downstairs (pralka ma ~170px)
+        Item {
+            Layout.preferredHeight: 170
+            Layout.alignment: Qt.AlignHCenter
         }
     }
 }

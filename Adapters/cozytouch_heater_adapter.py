@@ -62,18 +62,11 @@ class CozyTouchHeaterAdapter(HeaterPort):
         """
         Pobierz temperaturę docelową
 
-        Jeśli jest aktywny wyjątek (cap 157 = 1), zwraca cap 40 (temp wyjątku)
-        W przeciwnym razie zwraca cap 17 (normalna target temp)
+        zwraca cap 40 (target temp)
         """
-        # Sprawdź czy jest aktywny wyjątek
-        exception_active = self._client.get_device_capability(self._device_id, 157)
 
-        if exception_active == "1":
-            # Wyjątek aktywny - zwróć temperaturę wyjątku (cap 40)
-            temp = self._client.get_device_capability(self._device_id, 40)
-        else:
-            # Normalny tryb - zwróć target temp (cap 17)
-            temp = self._client.get_device_capability(self._device_id, 17)
+        temp = self._client.get_device_capability(self._device_id, 40)
+
 
         return float(temp) if temp else 0.0
 

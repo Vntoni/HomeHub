@@ -31,6 +31,9 @@ ApplicationWindow {
         WaterHeaterControlPopup {
             id: waterHeaterPopup
         }
+        HeaterControlPopup {
+            id: heaterPopup
+        }
         // Busy Indicator Overlay
         Rectangle {
             id: loadingOverlay
@@ -129,7 +132,9 @@ ApplicationWindow {
                     text: qsTr("Upstairs")
                     font.pixelSize: 20
                     onClicked: {
+                        console.log("Loading HeaterControl.qml...")
                         contentLoader.source = "Components/HeaterControl.qml"
+                        console.log("Loader status:", contentLoader.status)
                     }
                 }
             }
@@ -138,21 +143,25 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillHeight: true
+                Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 900
-                color: Material.background     // <-- tu masz pewność, że jest ciemno
+                color: Material.background
                 anchors.margins: 10
 
-                RowLayout {
-                     anchors.fill: parent
-                     Layout.alignment: Qt.AlignHCenter
-                    // Loader do dynamicznego ładowania widoków
-                    Loader {
-                        id: contentLoader
-                        anchors.margins: 10
-                        anchors.fill: parent
-                        Layout.alignment: Qt.AlignHCenter// +10px odstępu
+                // Loader do dynamicznego ładowania widoków
+                Loader {
+                    id: contentLoader
+                    anchors.fill: parent
+                    anchors.margins: 10
 
+                    onStatusChanged: {
+                        console.log("Loader status changed:", status)
+                        if (status === Loader.Error) {
+                            console.error("Loader error:", contentLoader.sourceComponent)
+                        }
+                        if (status === Loader.Ready) {
+                            console.log("Loader ready, item:", contentLoader.item)
+                        }
                     }
                 }
             }
