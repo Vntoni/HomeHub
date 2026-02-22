@@ -8,7 +8,7 @@
 
 **Plan to integrate**:
 - AC units (API connection, Control of temperature, Modes, reading the room temperature, working automation in summer/winter) ✔
-- Electric heaters (API connection, Control of temperature, Modes, reading the room temperature, working automation in summer/winter) ❌ 
+- Electric heaters (API connection, Control of temperature, Modes, reading the room temperature, working automation in summer/winter) ✔ 
 - Water Heater (API connection, Control of temperature, Modes, reading the room temperature, working automation in summer/winter) ✔
 - Waher Machine (BLE connection, Check state of washing (on/off), check and display washing time) ✔
 - Power consumption (API connection, get and save the data of hourly, daily, and monthly power consumption) ❌
