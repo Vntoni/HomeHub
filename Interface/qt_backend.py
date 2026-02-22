@@ -1,10 +1,11 @@
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal
 from App.climate_service import ClimateService
 from App.water_heater_service import WaterHeaterService
 from App.washer_service import WasherService
+from App.heater_service import HeaterService
 from Ports.washer import WasherSnapshot
 from qasync import asyncSlot
-import asyncio
+from typing import Optional
 
 
 class QtHomeBackend(QObject):
@@ -32,11 +33,20 @@ class QtHomeBackend(QObject):
     washerRemainingChanged = Signal(int)
     washerLastSeenChanged = Signal(str)
 
-    def __init__(self, climate: ClimateService, boiler: WaterHeaterService, washer: WasherService):
+    # Heaters (grzejniki)
+    heaterOnlineChanged = Signal(str, bool)  # pokój, status
+    heaterCurrentTempChanged = Signal(str, float)  # pokój, temp
+    heaterTargetTempChanged = Signal(str, float)  # pokój, temp
+    heaterModeChanged = Signal(str, str)  # pokój, tryb
+    heaterPowerChanged = Signal(str, bool)  # pokój, on/off
+
+    def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
+                 washer: WasherService, heater: Optional[HeaterService] = None):
         super().__init__()
         self._climate = climate
         self._boiler = boiler
         self._washer = washer
+        self._heater = heater
         # self.start_washer()
         # start monitor pralki (callback -> emit sygnałów)
     # async def start_washer(self):
@@ -63,6 +73,44 @@ class QtHomeBackend(QObject):
             await self._boiler.refresh()
         except:
             print("Not working boiler refresh")
+
+        # Odśwież grzejniki jeśli są dostępne
+        if self._heater:
+            try:
+                await self._heater.refresh_all()
+
+                # Emituj statusy online
+                online_map = self._heater.online_map()
+
+                for room, is_online in online_map.items():
+                    self.heaterOnlineChanged.emit(room, is_online)
+
+                # Emituj temperatury i tryby dla każdego pokoju
+                for room in online_map.keys():
+                    try:
+                        # Temperatura aktualna
+                        current_temp = self._heater.get_current_temp(room)
+                        self.heaterCurrentTempChanged.emit(room, current_temp)
+
+                        # Temperatura docelowa
+                        target_temp = self._heater.get_target_temp(room)
+                        self.heaterTargetTempChanged.emit(room, target_temp)
+
+                        # Tryb pracy
+                        mode = self._heater.get_mode(room)
+                        self.heaterModeChanged.emit(room, mode)
+
+                        # Status zasilania
+                        power = self._heater.get_power(room)
+                        self.heaterPowerChanged.emit(room, power)
+                    except Exception as e:
+                        print(f"Error emitting heater data for {room}: {e}")
+
+            except Exception as e:
+                print(f"Not working heater refresh: {e}")
+                import traceback
+                traceback.print_exc()
+
         try:
             online = self._climate.online_map()
             self.acSalonOnlineChanged.emit(bool(online.get("Salon")))
@@ -159,4 +207,67 @@ class QtHomeBackend(QObject):
     @asyncSlot()
     async def get_water_temp(self):
         self.waterTemp.emit("boiler", self._boiler.get_current_temp())
+
+    # --- Heaters (grzejniki elektryczne) ---
+    @asyncSlot(str)
+    async def turn_on_heater(self, room: str):
+        """Włącz grzejnik w danym pokoju"""
+        if self._heater:
+            await self._heater.turn_on(room)
+            self.heaterPowerChanged.emit(room, True)
+
+    @asyncSlot(str)
+    async def turn_off_heater(self, room: str):
+        """Wyłącz grzejnik w danym pokoju"""
+        if self._heater:
+            await self._heater.turn_off(room)
+            self.heaterPowerChanged.emit(room, False)
+
+    @asyncSlot(str)
+    async def get_heater_power(self, room: str):
+        """Pobierz status zasilania grzejnika"""
+        if self._heater:
+            self.heaterPowerChanged.emit(room, self._heater.get_power(room))
+
+    @asyncSlot(str, float, int)
+    async def set_heater_target_temp(self, room: str, temp: float, duration_minutes: int = 120):
+        """
+        Ustaw temperaturę docelową grzejnika
+
+        Args:
+            room: Nazwa pokoju
+            temp: Temperatura w °C
+            duration_minutes: Czas trwania (dla trybu wyjątku), domyślnie 120 min
+        """
+        if self._heater:
+            await self._heater.set_target_temp(room, temp, duration_minutes)
+            self.heaterTargetTempChanged.emit(room, self._heater.get_target_temp(room))
+
+    @asyncSlot(str)
+    async def get_heater_target_temp(self, room: str):
+        """Pobierz temperaturę docelową grzejnika"""
+        if self._heater:
+            self.heaterTargetTempChanged.emit(room, self._heater.get_target_temp(room))
+
+    @asyncSlot(str)
+    async def get_heater_current_temp(self, room: str):
+        """Pobierz aktualną temperaturę z grzejnika"""
+        if self._heater:
+            self.heaterCurrentTempChanged.emit(room, self._heater.get_current_temp(room))
+
+    @asyncSlot(str, str)
+    async def set_heater_mode(self, room: str, mode: str):
+        """
+        Ustaw tryb pracy grzejnika
+        mode: comfort, eco, frost_protection, auto, away
+        """
+        if self._heater:
+            await self._heater.set_mode(room, mode)
+            self.heaterModeChanged.emit(room, self._heater.get_mode(room))
+
+    @asyncSlot(str)
+    async def get_heater_mode(self, room: str):
+        """Pobierz tryb pracy grzejnika"""
+        if self._heater:
+            self.heaterModeChanged.emit(room, self._heater.get_mode(room))
 

@@ -1,8 +1,11 @@
 import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Załaduj .env z katalogu Config
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 @dataclass
 class Settings:
@@ -14,6 +17,10 @@ class Settings:
     ariston_pwd: str
     ariston_device_id: str
     washer_poll_seconds: int
+    # Cozy Touch heaters
+    cozytouch_user: str = ""
+    cozytouch_pwd: str = ""
+    cozytouch_scope: str = ""
     locale: str = "pl-PL"
 
 def get_settings() -> Settings:
@@ -26,4 +33,7 @@ def get_settings() -> Settings:
         ariston_pwd=os.environ["ARISTON_PWD"],
         ariston_device_id=os.environ["ARISTON_DEVICE_ID"],
         washer_poll_seconds=os.environ["WASHER_POLL_SECONDS"],
+        cozytouch_user=os.getenv("COZYTOUCH_USER", ""),
+        cozytouch_pwd=os.getenv("COZYTOUCH_PWD", ""),
+        cozytouch_scope=os.getenv("COZYTOUCH_SCOPE", "openid"),
     )

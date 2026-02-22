@@ -163,8 +163,11 @@ ApplicationWindow {
             target: backend
 
             function onReady(ready) {
+                if (ready && !isReady) {
+                    // Ustaw domyślny widok TYLKO przy pierwszym uruchomieniu
+                    contentLoader.source = "Components/Accontrol.qml"
+                }
                 isReady = ready
-                contentLoader.source = "Components/Accontrol.qml"
             }
         }
 }
