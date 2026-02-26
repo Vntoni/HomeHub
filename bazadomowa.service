@@ -20,9 +20,7 @@ ExecStart=/home/miggie/.virtualenvs/Baza_Domowa/bin/python View/main.py
 
 # Wyświetlanie na lokalnym ekranie RPi5 (Wayland/X11)
 Environment=DISPLAY=:0
-Environment=WAYLAND_DISPLAY=wayland-0
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-Environment=QT_QPA_PLATFORM=wayland
+Environment=QT_QPA_PLATFORM=xcb
 
 Restart=on-failure
 RestartSec=10
