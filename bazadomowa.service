@@ -1,0 +1,32 @@
+# Plik: ~/.config/systemd/user/bazadomowa.service
+# Umieść na RPi5: /home/miggie/.config/systemd/user/bazadomowa.service
+#
+# Aktywacja (jednorazowo na RPi5):
+#   mkdir -p ~/.config/systemd/user
+#   cp bazadomowa.service ~/.config/systemd/user/bazadomowa.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable bazadomowa
+#   loginctl enable-linger miggie   ← żeby serwis działał bez aktywnej sesji
+
+[Unit]
+Description=Baza Domowa – Smart Home App
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/miggie/Baza_Domowa
+ExecStart=/home/miggie/.virtualenvs/Baza_Domowa/bin/python View/main.py
+
+# Wyświetlanie na lokalnym ekranie RPi5 (Wayland/X11)
+Environment=DISPLAY=:0
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=QT_QPA_PLATFORM=wayland
+
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+

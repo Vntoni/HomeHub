@@ -58,7 +58,10 @@ htmlcov/
 
 # PyInstaller
 *.manifest
-*.spec
+# *.spec  ← BazaDomowa.spec jest potrzebny, nie wykluczaj
+
+# CI/CD artifacts
+baza_domowa.tar.gz
 
 # Jupyter Notebook
 .ipynb_checkpoints
