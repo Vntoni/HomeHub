@@ -25,15 +25,18 @@ args = [
     "--name=BazaDomowa",
 
     # Tryb: onedir jest bardziej niezawodny z PySide6 niż onefile
-    # onefile rozpakowuje się do /tmp przy każdym starcie co może powodować problemy
     "--onedir",
+
+    # Ścieżki do modułów – View/ musi być w path żeby "import images.images" działało
+    f"--paths={project_root}",
+    f"--paths={view_dir}",
 
     # Zbierz wszystkie pliki PySide6 (pluginy Qt, biblioteki, QML)
     "--collect-all=PySide6",
     "--collect-all=qasync",
 
     # Dane
-    f"--add-data={qml_dir}{sep}View/Example",    # QML files
+    f"--add-data={qml_dir}{sep}View/Example",         # QML files
     f"--add-data={view_dir / 'images'}{sep}View/images",  # Images
 
     # Ukryte importy
@@ -48,6 +51,7 @@ args = [
     "--hidden-import=ariston",
     "--hidden-import=requests",
     "--hidden-import=cozypy",
+    "--hidden-import=images.images",  # View/images/images.py
 
     # Output
     "--distpath=dist",
