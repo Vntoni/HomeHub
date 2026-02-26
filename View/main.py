@@ -3,6 +3,7 @@ import os
 import sys
 import asyncio
 import signal
+from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
@@ -23,23 +24,28 @@ def messageHandler(mode, context, message):
 qInstallMessageHandler(messageHandler)
 
 def main():
-    # Poprawka: nie nadpisuj jednej zmiennej dwukrotnie
     os.environ["QT_LOGGING_RULES"] = "qt.qml=true; qt.quick=true;"
 
     app = QGuiApplication(sys.argv)
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # === Nowość: budujemy backend wg SOLID (Qt adapter + serwisy + adaptery) ===
-    from Compositions.compositions import build_backend  # <- patrz kod poniżej
+    # Ścieżka do QML: gdy PyInstaller binary → sys._MEIPASS/View, gdy dev → katalog projektu
+    if hasattr(sys, "_MEIPASS"):
+        # PyInstaller rozpakowuje View/Example do _MEIPASS/View/Example
+        qml_import_path = str(Path(sys._MEIPASS) / "View")
+    else:
+        # Tryb deweloperski – katalog główny projektu (nad View/)
+        qml_import_path = str(Path(__file__).parent.parent)
 
-    # Po załadowaniu QML odpal odświeżenie inicjalne (asynchronicznie)
+    from Compositions.compositions import build_backend
+
     with loop:
-        backend = loop.run_until_complete(build_backend())  # zwraca QtHomeBackend (QObject)
+        backend = loop.run_until_complete(build_backend())
 
         engine = QQmlApplicationEngine()
         engine.rootContext().setContextProperty("backend", backend)
-        engine.addImportPath(sys.path[0])
+        engine.addImportPath(qml_import_path)
         engine.loadFromModule("Example", "main")
 
         if not engine.rootObjects():
