@@ -24,23 +24,30 @@ args = [
     # Nazwa
     "--name=BazaDomowa",
 
-    # Tryb
-    "--onefile",  # Jeden plik exe
-    # "--windowed",  # Bez konsoli (odkomentuj w produkcji)
+    # Tryb: onedir jest bardziej niezawodny z PySide6 niż onefile
+    # onefile rozpakowuje się do /tmp przy każdym starcie co może powodować problemy
+    "--onedir",
+
+    # Zbierz wszystkie pliki PySide6 (pluginy Qt, biblioteki, QML)
+    "--collect-all=PySide6",
+    "--collect-all=qasync",
 
     # Dane
-    f"--add-data={qml_dir}{sep}View/Example",  # QML files
+    f"--add-data={qml_dir}{sep}View/Example",    # QML files
     f"--add-data={view_dir / 'images'}{sep}View/images",  # Images
 
-    # Ukryte importy (mogą być potrzebne)
+    # Ukryte importy
     "--hidden-import=PySide6",
+    "--hidden-import=PySide6.QtCore",
+    "--hidden-import=PySide6.QtGui",
+    "--hidden-import=PySide6.QtQml",
+    "--hidden-import=PySide6.QtQuick",
+    "--hidden-import=PySide6.QtQuickControls2",
     "--hidden-import=qasync",
     "--hidden-import=pyairstage",
     "--hidden-import=ariston",
     "--hidden-import=requests",
-
-    # Optymalizacje
-    "--optimize=2",  # Maksymalna optymalizacja
+    "--hidden-import=cozypy",
 
     # Output
     "--distpath=dist",

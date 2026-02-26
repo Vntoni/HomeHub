@@ -68,9 +68,9 @@ jobs:
 
       - name: Replace binary
         run: |
-          mkdir -p ~/app
-          cp dist/BazaDomowa ~/app/BazaDomowa
-          chmod +x ~/app/BazaDomowa
+          rm -rf ~/app/BazaDomowa
+          cp -r dist/BazaDomowa ~/app/BazaDomowa
+          chmod +x ~/app/BazaDomowa/BazaDomowa
 
       - name: Start app service
         run: |
