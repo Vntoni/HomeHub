@@ -16,7 +16,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/home/miggie/Baza_Domowa
-ExecStart=/home/miggie/.virtualenvs/Baza_Domowa/bin/python View/main.py
+ExecStart=/home/miggie/app/BazaDomowa
 
 # Wyświetlanie na lokalnym ekranie RPi5 (Wayland/X11)
 Environment=DISPLAY=:0

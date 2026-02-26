@@ -8,7 +8,7 @@ on:
 
 jobs:
   # ────────────────────────────────────────────
-  # JOB 1 – testy
+  # JOB 1 – testy (GitHub cloud runner)
   # ────────────────────────────────────────────
   test:
     name: Run pytest
@@ -40,68 +40,39 @@ jobs:
         run: pytest Tests/ --cov=App --cov=Adapters --cov=Ports --cov-report=term-missing
 
   # ────────────────────────────────────────────
-  # JOB 2 – pakowanie (tylko po merge na main)
+  # JOB 2 – build + deploy na RPi5
+  # Działa jako self-hosted runner NA RPi5:
+  # - ten sam ARM64 CPU → PyInstaller działa
+  # - RPi5 łączy się z GitHub (wychodzące) → nie trzeba otwierać portów
   # ────────────────────────────────────────────
-  package:
-    name: Package source
-    runs-on: ubuntu-latest
+  deploy:
+    name: Build & Deploy on RPi5
+    runs-on: self-hosted
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Checkout code
+      - name: Checkout latest code
         uses: actions/checkout@v4
 
-      - name: Create deployment archive
+      - name: Install Python dependencies
         run: |
-          tar -czf /tmp/baza_domowa.tar.gz \
-            --exclude='./.git' \
-            --exclude='./__pycache__' \
-            --exclude='./*.pyc' \
-            --exclude='./.venv' \
-            --exclude='./build' \
-            --exclude='./dist' \
-            .
-          mv /tmp/baza_domowa.tar.gz baza_domowa.tar.gz
+          ~/.virtualenvs/Baza_Domowa/bin/pip install -r requirements.txt --quiet
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: baza_domowa
-          path: baza_domowa.tar.gz
-          retention-days: 7
-
-  # ────────────────────────────────────────────
-  # JOB 3 – deploy na RPi5 przez SSH
-  # ────────────────────────────────────────────
-  deploy:
-    name: Deploy to RPi5
-    runs-on: ubuntu-latest
-    needs: package
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: baza_domowa
-
-      - name: Set up SSH key
+      - name: Build with PyInstaller
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.RPI_HOST }}" >> ~/.ssh/known_hosts
+          ~/.virtualenvs/Baza_Domowa/bin/python build_app.py
 
-      - name: Copy archive to RPi5
+      - name: Stop app service before replacing binary
+        run: systemctl --user stop bazadomowa || true
+
+      - name: Replace binary
         run: |
-          scp -i ~/.ssh/id_rsa \
-              baza_domowa.tar.gz \
-              ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }}:/tmp/baza_domowa.tar.gz
+          mkdir -p ~/app
+          cp dist/BazaDomowa ~/app/BazaDomowa
+          chmod +x ~/app/BazaDomowa
 
-      - name: Deploy & restart service on RPi5
+      - name: Start app service
         run: |
-          ssh -i ~/.ssh/id_rsa \
-              ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} \
-              'bash /home/${{ secrets.RPI_USER }}/deploy_baza.sh'
-
+          systemctl --user start bazadomowa
+          systemctl --user status bazadomowa --no-pager
