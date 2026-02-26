@@ -25,9 +25,10 @@ args = [
     "--onefile",  # Jeden plik exe
     # "--windowed",  # Bez konsoli (odkomentuj w produkcji)
 
-    # Dane
-    f"--add-data={qml_dir};View/Example",  # QML files
-    f"--add-data={view_dir / 'images'};View/images",  # Images
+    # Dane (separator : na Linux, ; na Windows)
+    sep = ";" if sys.platform == "win32" else ":"
+    f"--add-data={qml_dir}{sep}View/Example",  # QML files
+    f"--add-data={view_dir / 'images'}{sep}View/images",  # Images
 
     # Ukryte importy (mogą być potrzebne)
     "--hidden-import=PySide6",
