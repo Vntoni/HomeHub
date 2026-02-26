@@ -14,6 +14,9 @@ print("=" * 60)
 print("BUILDING BAZA_DOMOWA")
 print("=" * 60)
 
+# Separator ścieżek: ":" na Linux/Mac, ";" na Windows
+sep = ";" if sys.platform == "win32" else ":"
+
 # Parametry PyInstaller
 args = [
     str(view_dir / "main.py"),  # Główny plik
@@ -25,8 +28,7 @@ args = [
     "--onefile",  # Jeden plik exe
     # "--windowed",  # Bez konsoli (odkomentuj w produkcji)
 
-    # Dane (separator : na Linux, ; na Windows)
-    sep = ";" if sys.platform == "win32" else ":"
+    # Dane
     f"--add-data={qml_dir}{sep}View/Example",  # QML files
     f"--add-data={view_dir / 'images'}{sep}View/images",  # Images
 
