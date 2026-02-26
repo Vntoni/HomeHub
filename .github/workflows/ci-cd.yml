@@ -55,13 +55,13 @@ jobs:
       - name: Create deployment archive
         run: |
           tar -czf baza_domowa.tar.gz \
-            --exclude='.git' \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            --exclude='.venv' \
-            --exclude='build' \
-            --exclude='dist' \
-            --exclude='*.spec' \
+            --exclude='./baza_domowa.tar.gz' \
+            --exclude='./.git' \
+            --exclude='./__pycache__' \
+            --exclude='./*.pyc' \
+            --exclude='./.venv' \
+            --exclude='./build' \
+            --exclude='./dist' \
             .
 
       - name: Upload artifact
