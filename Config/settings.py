@@ -1,11 +1,19 @@
 import os
+import sys
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Załaduj .env z katalogu Config
-env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=env_path)
+# Szukaj .env w kilku miejscach (kolejność: binary dir → home → projekt)
+# sys.executable wskazuje na binary gdy uruchamiamy z PyInstaller
+_binary_dir = Path(sys.executable).parent          # obok BazaDomowa binary
+_project_dir = Path(__file__).parent               # Config/ w projekcie deweloperskim
+_home_config = Path.home() / ".config" / "bazadomowa" / ".env"  # ~/.config/bazadomowa/.env
+
+for _env_path in [_binary_dir / ".env", _home_config, _project_dir / ".env"]:
+    if _env_path.exists():
+        load_dotenv(dotenv_path=_env_path)
+        break
 
 @dataclass
 class Settings:
