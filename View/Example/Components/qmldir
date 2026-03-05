@@ -1,0 +1,8 @@
+ACControlPopup 1.0 ACControlPopup.qml
+HeaterControl 1.0 HeaterControl.qml
+HeaterControlPopup 1.0 HeaterControlPopup.qml
+HomeIcon 1.0 HomeIcon.qml
+TemperatureMap 1.0 TemperatureMap.qml
+WasherMachine 1.0 WasherMachine.qml
+WaterHeaterControlPopup 1.0 WaterHeaterControlPopup.qml
+

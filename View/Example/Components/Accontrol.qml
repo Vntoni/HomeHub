@@ -505,17 +505,6 @@ Rectangle {
         Layout.topMargin: 10
     }
 
-    // Przycisk mapy temperatury
-    Button {
-        text: "🌡  Mapa temperatury"
-        Layout.alignment: Qt.AlignHCenter
-        Layout.topMargin: 6
-        Layout.bottomMargin: 10
-        Material.accent: Material.Green
-        font.pixelSize: 16
-        onClicked: tempMapPopup.open()
-    }
-
     }  // Zamknięcie mainCol ColumnLayout
 
     Connections {

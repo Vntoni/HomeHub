@@ -166,6 +166,25 @@ ApplicationWindow {
                     // Podświetl przy hover/press
                     HoverHandler { onHoveredChanged: parent.opacity = hovered ? 1.0 : 0.5 }
                 }
+
+                // Przycisk mapy temperatury – widoczny tylko w zakładce Downstairs
+                Button {
+                    id: tempMapBtn
+                    text: "🌡"
+                    font.pixelSize: 22
+                    Layout.preferredWidth: 50
+                    Layout.preferredHeight: 50
+                    Layout.alignment: Qt.AlignVCenter
+                    opacity: 0.7
+                    Material.accent: Material.Green
+                    visible: tabBar.currentIndex === 0   // tylko Downstairs
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Mapa temperatury"
+
+                    onClicked: tempMapPopup.open()
+                    HoverHandler { onHoveredChanged: parent.opacity = hovered ? 1.0 : 0.7 }
+                }
             }
 
 
