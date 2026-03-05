@@ -144,12 +144,14 @@ ApplicationWindow {
                     }
                 }
 
-                // Wypełnienie – przesuwa przycisk na prawo
                 Item { Layout.fillWidth: true }
 
+                // Przycisk mapy temperatury – widoczny tylko w zakładce Downstairs
                 Button {
                     id: tempMapBtn
-                    text: "🌡"
+                    icon.source: "qrc:/icons64/temperature-control.png"
+                    icon.width: 32
+                    icon.height: 32
                     font.pixelSize: 22
                     Layout.preferredWidth: 100
                     Layout.preferredHeight: 50
@@ -185,7 +187,7 @@ ApplicationWindow {
                     HoverHandler { onHoveredChanged: parent.opacity = hovered ? 1.0 : 0.5 }
                 }
 
-                // Przycisk mapy temperatury – widoczny tylko w zakładce Downstairs
+
 
             }
 
