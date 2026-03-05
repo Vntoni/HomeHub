@@ -34,6 +34,9 @@ ApplicationWindow {
         HeaterControlPopup {
             id: heaterPopup
         }
+        TemperatureMap {
+            id: tempMapPopup
+        }
         // Busy Indicator Overlay
         Rectangle {
             id: loadingOverlay
