@@ -154,7 +154,7 @@ ApplicationWindow {
                     icon.height: 32
                     font.pixelSize: 22
                     Layout.preferredWidth: 100
-                    Layout.preferredHeight: 50
+                    Layout.preferredHeight: 100
                     Layout.alignment: Qt.AlignVCenter
                     opacity: 0.7
                     Material.accent: Material.Green
@@ -169,10 +169,10 @@ ApplicationWindow {
 
                 // Przycisk wyjścia – dyskretny, w prawym górnym rogu
                 Button {
-                    text: "✕"
+                    text: "x"
                     font.pixelSize: 18
                     Layout.preferredWidth: 50
-                    Layout.preferredHeight: 50
+                    Layout.preferredHeight: 100
                     Layout.rightMargin: 10
                     Layout.alignment: Qt.AlignVCenter
                     opacity: 0.5

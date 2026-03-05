@@ -75,7 +75,7 @@ Popup {
         // Nagłówek
         Text {
             id: header
-            text: "Map temperature"
+            text: "Room Temperature Map"
             color: "#ffffff"
             font.pixelSize: 18
             font.bold: true
