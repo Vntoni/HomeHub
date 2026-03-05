@@ -149,7 +149,7 @@ ApplicationWindow {
                 // Przycisk mapy temperatury – widoczny tylko w zakładce Downstairs
                 Button {
                     id: tempMapBtn
-                    icon.source: "qrc:/icons64/temperature-control.png"
+                    icon.source: "qrc:/icons64/temperature-control_32.png"
                     icon.width: 32
                     icon.height: 32
                     font.pixelSize: 22

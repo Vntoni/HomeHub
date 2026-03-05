@@ -4,7 +4,7 @@
         <file alias="water_boiler.png">C:\Users\85faht\Baza_Domowa\View\images\boiler_1.png</file>
         <file alias="air-conditioner_2.png">C:\Users\85faht\Baza_Domowa\View\images\air-conditioner_2.png</file>
         <file alias="laundry-machine.png">C:\Users\85faht\Baza_Domowa\View\images\laundry-machine.png</file>
-        <file alias="temperature-control.png">C:\Users\85faht\Baza_Domowa\View\images\temperature-control.png</file>
+        <file alias="temperature-control_32.png">C:\Users\85faht\Baza_Domowa\View\images\temperature-control.png</file>
     </qresource>
     <qresource prefix="icons128">
         <file alias="boiler_128.png">C:\Users\85faht\Baza_Domowa\View\images\128\boiler.png</file>
