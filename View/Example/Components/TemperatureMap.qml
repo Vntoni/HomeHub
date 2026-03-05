@@ -90,8 +90,8 @@ Popup {
             anchors.topMargin: 12
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: closeBtn.top
-            anchors.bottomMargin: 12
+            anchors.bottom: legend.top
+            anchors.bottomMargin: 8
 
             // Odśwież canvas gdy temperatury się zmienią
             onTempSalonChanged:      requestPaint()
@@ -219,17 +219,17 @@ Popup {
         // Legenda kolorów
         Row {
             id: legend
-            anchors.bottom: closeBtn.top
+            anchors.bottom: parent.bottom
             anchors.bottomMargin: 4
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 20
+            spacing: 10
 
             Repeater {
                 model: [
-                    {color: "#1a3a5c", label: "< 18°C"},
-                    {color: "#1a3d2a", label: "20–22°C"},
-                    {color: "#3d3a1a", label: "22–24°C"},
-                    {color: "#5c1a1a", label: "> 26°C"}
+                    { color: "#1a3a5c", label: "< 18°C" },
+                    { color: "#1a3d2a", label: "20–22°C" },
+                    { color: "#3d3a1a", label: "22–24°C" },
+                    { color: "#5c1a1a", label: "> 26°C" }
                 ]
                 Row {
                     spacing: 4
