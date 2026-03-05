@@ -118,27 +118,53 @@ ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
 
-            // Pasek zakładek
-            TabBar {
-                id: tabBar
+            // Pasek zakładek + przycisk wyjścia
+            RowLayout {
+                Layout.fillWidth: true
                 Layout.preferredHeight: 100
-                Layout.preferredWidth: 300
 
-                TabButton {
-                    text: qsTr("Downstairs")
-                    font.pixelSize: 20
-                    onClicked: {
-                        contentLoader.source = "Components/Accontrol.qml"
+                TabBar {
+                    id: tabBar
+                    Layout.preferredHeight: 100
+                    Layout.preferredWidth: 300
+
+                    TabButton {
+                        text: qsTr("Downstairs")
+                        font.pixelSize: 20
+                        onClicked: {
+                            contentLoader.source = "Components/Accontrol.qml"
+                        }
+                    }
+                    TabButton {
+                        text: qsTr("Upstairs")
+                        font.pixelSize: 20
+                        onClicked: {
+                            contentLoader.source = "Components/HeaterControl.qml"
+                        }
                     }
                 }
-                TabButton {
-                    text: qsTr("Upstairs")
-                    font.pixelSize: 20
-                    onClicked: {
-                        console.log("Loading HeaterControl.qml...")
-                        contentLoader.source = "Components/HeaterControl.qml"
-                        console.log("Loader status:", contentLoader.status)
-                    }
+
+                // Wypełnienie – przesuwa przycisk na prawo
+                Item { Layout.fillWidth: true }
+
+                // Przycisk wyjścia – dyskretny, w prawym górnym rogu
+                Button {
+                    text: "✕"
+                    font.pixelSize: 18
+                    Layout.preferredWidth: 50
+                    Layout.preferredHeight: 50
+                    Layout.rightMargin: 10
+                    Layout.alignment: Qt.AlignVCenter
+                    opacity: 0.5
+                    Material.accent: Material.Red
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Zamknij aplikację"
+
+                    onClicked: Qt.quit()
+
+                    // Podświetl przy hover/press
+                    HoverHandler { onHoveredChanged: parent.opacity = hovered ? 1.0 : 0.5 }
                 }
             }
 
