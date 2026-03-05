@@ -75,7 +75,7 @@ Popup {
         // Nagłówek
         Text {
             id: header
-            text: "Mapa temperatury – Parter"
+            text: "Map temperature"
             color: "#ffffff"
             font.pixelSize: 18
             font.bold: true
@@ -222,14 +222,14 @@ Popup {
             anchors.bottom: closeBtn.top
             anchors.bottomMargin: 4
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 10
+            spacing: 20
 
             Repeater {
                 model: [
-                    { color: "#1a3a5c", label: "< 18°C" },
-                    { color: "#1a3d2a", label: "20–22°C" },
-                    { color: "#3d3a1a", label: "22–24°C" },
-                    { color: "#5c1a1a", label: "> 26°C" }
+                    {color: "#1a3a5c", label: "< 18°C"},
+                    {color: "#1a3d2a", label: "20–22°C"},
+                    {color: "#3d3a1a", label: "22–24°C"},
+                    {color: "#5c1a1a", label: "> 26°C"}
                 ]
                 Row {
                     spacing: 4
@@ -247,16 +247,6 @@ Popup {
                     }
                 }
             }
-        }
-
-        // Przycisk zamknięcia
-        Button {
-            id: closeBtn
-            text: "Zamknij"
-            anchors.bottom: parent.bottom
-            anchors.horizontalCenter: parent.horizontalCenter
-            Material.accent: Material.Green
-            onClicked: tempMapPopup.close()
         }
     }
 }
