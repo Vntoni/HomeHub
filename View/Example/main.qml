@@ -153,8 +153,8 @@ ApplicationWindow {
                     icon.width: 32
                     icon.height: 32
                     icon.color: "transparent"   // wyłącz monochromatyczne kolorowanie przez Qt
-                    Layout.preferredWidth: 100
-                    Layout.preferredHeight: 100
+                    Layout.preferredWidth: 50
+                    Layout.preferredHeight: 50
                     Layout.alignment: Qt.AlignVCenter
                     opacity: 0.9
                     Material.accent: Material.Green
@@ -171,8 +171,8 @@ ApplicationWindow {
                 Button {
                     text: "x"
                     font.pixelSize: 18
-                    Layout.preferredWidth: 100
-                    Layout.preferredHeight: 100
+                    Layout.preferredWidth: 50
+                    Layout.preferredHeight: 50
                     Layout.rightMargin: 10
                     Layout.alignment: Qt.AlignVCenter
                     opacity: 0.5
