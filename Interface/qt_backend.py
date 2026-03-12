@@ -1,5 +1,6 @@
 from PySide6.QtCore import QObject, Signal
 from App.climate_service import ClimateService
+from App.sensor_service import SensorService
 from App.water_heater_service import WaterHeaterService
 from App.washer_service import WasherService
 from App.heater_service import HeaterService
@@ -40,13 +41,18 @@ class QtHomeBackend(QObject):
     heaterModeChanged = Signal(str, str)  # pokój, tryb
     heaterPowerChanged = Signal(str, bool)  # pokój, on/off
 
+    # Sensors (czujniki Zigbee)
+    sensorTempChanged = Signal(str, float)      # pokój, temperatura
+    sensorHumidityChanged = Signal(str, float)  # pokój, wilgotność
+
     def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
-                 washer: WasherService, heater: Optional[HeaterService] = None):
+                 washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None):
         super().__init__()
         self._climate = climate
         self._boiler = boiler
         self._washer = washer
         self._heater = heater
+        self.sensors = sensor
         # self.start_washer()
         # start monitor pralki (callback -> emit sygnałów)
     # async def start_washer(self):
@@ -110,6 +116,13 @@ class QtHomeBackend(QObject):
                 print(f"Not working heater refresh: {e}")
                 import traceback
                 traceback.print_exc()
+        if self.sensors:
+            try:
+                for room in ["Salon", "Jadalnia"]:
+                    self.sensorTempChanged.emit(room, self.sensors.get_temperature(room))
+                    self.sensorHumidityChanged.emit(room, self.sensors.get_humidity(room))
+            except Exception as e:
+                print(f"Not working sensors refresh: {e}")
 
         try:
             online = self._climate.online_map()

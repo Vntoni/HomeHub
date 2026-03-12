@@ -27,6 +27,20 @@ Popup {
     enter: Transition { NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200 } }
     exit:  Transition { NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150 } }
 
+    Connections {
+        target: backend
+
+        function onSensorTempChanged(room, temp) {
+            if (room === "Salon")    tempMapPopup.tempSalon    = temp
+            if (room === "Jadalnia") tempMapPopup.tempJadalnia = temp
+        }
+
+        function onSensorHumidityChanged(room, hum) {
+            if (room === "Salon")    tempMapPopup.humSalon    = hum
+            if (room === "Jadalnia") tempMapPopup.humJadalnia = hum
+        }
+    }
+
     onOpened: {
         tempMapPopup.x = (parent.width  - tempMapPopup.width)  / 2
         tempMapPopup.y = (parent.height - tempMapPopup.height) / 2

@@ -127,8 +127,39 @@ async def build_backend() -> QtHomeBackend:
             import traceback
             traceback.print_exc()
 
+    # --- Sensory Zigbee (MQTT) ---
+    sensor_svc = None
+    try:
+        from Adapters.zigbee_sensor_adapter import ZigbeeSensorAdapter
+        from App.sensor_service import SensorService
+
+        # backend jest tworzony po sensor_svc, więc callback podepniemy później
+        _pending_sensor_adapters = {}
+
+        def _make_sensor_update(backend_ref, room):
+            def _on_update(name, data):
+                backend_ref[0].sensorTempChanged.emit(room, float(data.get("temperature", 0.0)))
+                backend_ref[0].sensorHumidityChanged.emit(room, float(data.get("humidity", 0.0)))
+            return _on_update
+
+        # Lista pokoi z czujnikami – dodaj/usuń wg potrzeb
+        _sensor_rooms = ["Salon", "Jadalnia"]
+        _backend_ref = [None]  # będzie wypełnione po utworzeniu backend
+
+        sensors_dict = {
+            room: ZigbeeSensorAdapter(room, on_update=_make_sensor_update(_backend_ref, room))
+            for room in _sensor_rooms
+        }
+        sensor_svc = SensorService(sensors_dict)
+        print("✓ Sensory Zigbee zainicjalizowane")
+    except Exception as e:
+        print(f"Błąd inicjalizacji sensorów Zigbee: {e}")
+        _backend_ref = [None]
+
     # --- Qt adapter (QObject) ---
-    return QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc)
+    backend = QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc, sensor_svc)
+    _backend_ref[0] = backend  # teraz callback ma dostęp do backend
+    return backend
 
 async def main():
     await build_backend()
