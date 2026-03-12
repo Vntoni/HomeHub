@@ -118,9 +118,9 @@ class QtHomeBackend(QObject):
                 traceback.print_exc()
         if self.sensors:
             try:
-                for room in ["Salon", "Jadalnia"]:
-                    self.sensorTempChanged.emit(room, self.sensors.get_temperature(room))
-                    self.sensorHumidityChanged.emit(room, self.sensors.get_humidity(room))
+                for room in ["salon", "jadalnia"]:
+                    self.sensorTempChanged.emit(room, self.sensors.get_temperature(f"czujnik_{room}"))
+                    self.sensorHumidityChanged.emit(room, self.sensors.get_humidity(f"czujnik_{room}"))
             except Exception as e:
                 print(f"Not working sensors refresh: {e}")
 
