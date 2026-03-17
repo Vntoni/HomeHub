@@ -20,8 +20,8 @@ class ZigbeeSensorAdapter:
             sensor_name: Friendly name czujnika w Zigbee2MQTT, np. "Salon"
             on_update: opcjonalny callback(name, data) wywoływany przy każdej nowej wiadomości
         """
-        self._name = sensor_name
-        self._topic = f"zigbee2mqtt/{sensor_name}"
+        self._name = f"czujnik_{sensor_name}"
+        self._topic = f"zigbee2mqtt/{self._name}"
         self._data: dict = {}
         self._on_update = on_update
 

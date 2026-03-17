@@ -30,13 +30,12 @@ def main():
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # Ścieżka do QML: gdy PyInstaller binary → sys._MEIPASS/View, gdy dev → katalog projektu
+    # Ścieżka do QML: gdy PyInstaller binary → sys._MEIPASS/View, gdy dev → View/
     if hasattr(sys, "_MEIPASS"):
-        # PyInstaller rozpakowuje View/Example do _MEIPASS/View/Example
         qml_import_path = str(Path(sys._MEIPASS) / "View")
     else:
-        # Tryb deweloperski – katalog główny projektu (nad View/)
-        qml_import_path = str(Path(__file__).parent.parent)
+        # Tryb deweloperski – View/ zawiera folder Example/ z qmldir
+        qml_import_path = str(Path(__file__).parent)
 
     from Compositions.compositions import build_backend
 

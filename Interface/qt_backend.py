@@ -52,7 +52,7 @@ class QtHomeBackend(QObject):
         self._boiler = boiler
         self._washer = washer
         self._heater = heater
-        self.sensors = sensor
+        self._sensors = sensor
         # self.start_washer()
         # start monitor pralki (callback -> emit sygnałów)
     # async def start_washer(self):
@@ -116,11 +116,11 @@ class QtHomeBackend(QObject):
                 print(f"Not working heater refresh: {e}")
                 import traceback
                 traceback.print_exc()
-        if self.sensors:
+        if self._sensors:
             try:
-                for room in ["salon", "jadalnia"]:
-                    self.sensorTempChanged.emit(room, self.sensors.get_temperature(f"czujnik_{room}"))
-                    self.sensorHumidityChanged.emit(room, self.sensors.get_humidity(f"czujnik_{room}"))
+                for room in ["lazienka", "jadalnia"]:
+                    self.sensorTempChanged.emit(room, self._sensors.get_temperature(f"czujnik_{room}"))
+                    self.sensorHumidityChanged.emit(room, self._sensors.get_humidity(f"czujnik_{room}"))
             except Exception as e:
                 print(f"Not working sensors refresh: {e}")
 

@@ -36,4 +36,4 @@ class MQTTClient:
 
 if __name__ == "__main__":
     client = MQTTClient()
-    client.get_data("Salon")  # podaj nazwę czujnika z Zigbee2MQTT
+    client.get_data("czujnik_salon")  # podaj nazwę czujnika z Zigbee2MQTT

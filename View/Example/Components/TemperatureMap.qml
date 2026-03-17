@@ -21,7 +21,7 @@ Popup {
     property real tempPrzedpokoj: NaN
     property real tempWC:       NaN
 
-    property real humSalon:    NaN
+    property real humWC:    NaN
     property real humJadalnia: NaN
 
     enter: Transition { NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200 } }
@@ -31,13 +31,13 @@ Popup {
         target: backend
 
         function onSensorTempChanged(room, temp) {
-            if (room === "Salon")    tempMapPopup.tempSalon    = temp
-            if (room === "Jadalnia") tempMapPopup.tempJadalnia = temp
+            if (room === "lazienka")    tempMapPopup.tempWC    = temp
+            if (room === "jadalnia") tempMapPopup.tempJadalnia = temp
         }
 
         function onSensorHumidityChanged(room, hum) {
-            if (room === "Salon")    tempMapPopup.humSalon    = hum
-            if (room === "Jadalnia") tempMapPopup.humJadalnia = hum
+            if (room === "lazienka")    tempMapPopup.humWC    = hum
+            if (room === "jadalnia") tempMapPopup.humJadalnia = hum
         }
     }
 

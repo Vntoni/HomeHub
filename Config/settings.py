@@ -30,6 +30,14 @@ class Settings:
     cozytouch_pwd: str = ""
     cozytouch_scope: str = ""
     locale: str = "pl-PL"
+    # Baza danych PostgreSQL
+    db_dsn: str = "postgresql://baza:baza@localhost/baza_domowa"
+    # Pogoda (Open-Meteo – bez klucza API)
+    weather_latitude: float = 50.119391   # Rodziny Pganów 74
+    weather_longitude: float = 19.803053
+    weather_poll_interval_seconds: int = 3600 # co 30 minut
+    # Czujniki Zigbee – lista pokoi (oddzielone przecinkiem w .env)
+    sensor_rooms: str = "salon,jadalnia"
 
 def get_settings() -> Settings:
     return Settings(
@@ -40,8 +48,13 @@ def get_settings() -> Settings:
         pwd=os.environ["AIRSTAGE_PWD"],
         ariston_pwd=os.environ["ARISTON_PWD"],
         ariston_device_id=os.environ["ARISTON_DEVICE_ID"],
-        washer_poll_seconds=os.environ["WASHER_POLL_SECONDS"],
+        washer_poll_seconds=int(os.environ["WASHER_POLL_SECONDS"]),
         cozytouch_user=os.getenv("COZYTOUCH_USER", ""),
         cozytouch_pwd=os.getenv("COZYTOUCH_PWD", ""),
         cozytouch_scope=os.getenv("COZYTOUCH_SCOPE", "openid"),
+        db_dsn=os.getenv("DB_DSN", "postgresql://baza:baza@localhost/baza_domowa"),
+        weather_latitude=float(os.getenv("WEATHER_LATITUDE", "50.119391")),
+        weather_longitude=float(os.getenv("WEATHER_LONGITUDE", "19.803053")),
+        weather_poll_interval_seconds=int(os.getenv("WEATHER_POLL_INTERVAL", "3600")),
+        sensor_rooms=os.getenv("SENSOR_ROOMS", "salon,jadalnia"),
     )

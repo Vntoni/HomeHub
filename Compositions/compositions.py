@@ -1,4 +1,5 @@
 # src/home/composition.py
+import asyncio
 import ariston
 from pyairstage.airstageAC import AirstageAC, ApiCloud
 from Model.Backend.washer_ble import WasherMachine
@@ -6,6 +7,8 @@ from Config.settings import get_settings
 from Adapters.airstage_ac_adapter import AirstageACAdapter
 from Adapters.ariston_boiler_adapter import AristonBoilerAdapter
 from Adapters.washer_ble_adapter import WasherBleAdapter
+from Adapters.postgres_repository_adapter import PostgresRepositoryAdapter
+from Adapters.open_meteo_adapter import OpenMeteoAdapter
 from App.climate_service import ClimateService
 from App.water_heater_service import WaterHeaterService
 from App.washer_service import WasherService
@@ -13,6 +16,16 @@ from Interface.qt_backend import QtHomeBackend
 
 async def build_backend() -> QtHomeBackend:
     s = get_settings()
+
+    # --- Baza danych PostgreSQL ---
+    repo = None
+    try:
+        repo = PostgresRepositoryAdapter(dsn=s.db_dsn)
+        await repo.connect()
+        print("✓ Baza danych PostgreSQL połączona")
+    except Exception as e:
+        print(f"⚠ Baza danych niedostępna (dane nie będą zapisywane): {e}")
+        repo = None
 
     # --- Airstage (klima) ---
     try:
@@ -133,25 +146,30 @@ async def build_backend() -> QtHomeBackend:
         from Adapters.zigbee_sensor_adapter import ZigbeeSensorAdapter
         from App.sensor_service import SensorService
 
-        # backend jest tworzony po sensor_svc, więc callback podepniemy później
-        _pending_sensor_adapters = {}
-
-        def _make_sensor_update(backend_ref, room):
-            def _on_update(name, data):
-                backend_ref[0].sensorTempChanged.emit(room, float(data.get("temperature", 0.0)))
-                backend_ref[0].sensorHumidityChanged.emit(room, float(data.get("humidity", 0.0)))
-            return _on_update
-
-        # Lista pokoi z czujnikami – dodaj/usuń wg potrzeb
-        _sensor_rooms = ["Salon", "Jadalnia"]
         _backend_ref = [None]  # będzie wypełnione po utworzeniu backend
 
+        # Lista pokoi z .env (SENSOR_ROOMS=salon,jadalnia)
+        _sensor_rooms = [r.strip() for r in s.sensor_rooms.split(",") if r.strip()]
+
+        def _make_sensor_update(backend_ref, room, svc_ref):
+            def _on_update(name, data):
+                # Emit do Qt UI
+                if backend_ref[0]:
+                    backend_ref[0].sensorTempChanged.emit(room, float(data.get("temperature", 0.0)))
+                    backend_ref[0].sensorHumidityChanged.emit(room, float(data.get("humidity", 0.0)))
+                # Zapis do bazy przez SensorService
+                if svc_ref[0]:
+                    svc_ref[0].record_reading(room, data)
+            return _on_update
+
+        _svc_ref = [None]  # forward reference na sensor_svc
         sensors_dict = {
-            room: ZigbeeSensorAdapter(room, on_update=_make_sensor_update(_backend_ref, room))
+            room: ZigbeeSensorAdapter(room, on_update=_make_sensor_update(_backend_ref, room, _svc_ref))
             for room in _sensor_rooms
         }
-        sensor_svc = SensorService(sensors_dict)
-        print("✓ Sensory Zigbee zainicjalizowane")
+        sensor_svc = SensorService(sensors_dict, repository=repo)
+        _svc_ref[0] = sensor_svc
+        print(f"✓ Sensory Zigbee zainicjalizowane: {_sensor_rooms}")
     except Exception as e:
         print(f"Błąd inicjalizacji sensorów Zigbee: {e}")
         _backend_ref = [None]
@@ -159,9 +177,16 @@ async def build_backend() -> QtHomeBackend:
     # --- Qt adapter (QObject) ---
     backend = QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc, sensor_svc)
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
+
+    # --- Pogoda Open-Meteo (polling w tle) ---
+    if repo:
+        weather_adapter = OpenMeteoAdapter(
+            latitude=s.weather_latitude,
+            longitude=s.weather_longitude,
+            repository=repo,
+            poll_interval_seconds=s.weather_poll_interval_seconds,
+        )
+        asyncio.create_task(weather_adapter.start_polling())
+        print(f"✓ Polling pogody Open-Meteo uruchomiony (co {s.weather_poll_interval_seconds}s)")
+
     return backend
-
-async def main():
-    await build_backend()
-
-# asyncio.run(main())
