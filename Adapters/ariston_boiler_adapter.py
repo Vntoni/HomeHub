@@ -26,5 +26,5 @@ class AristonBoilerAdapter(WaterHeaterPort):
     def get_current_temperature(self) -> float:
         return float(self._c.water_heater_current_temperature)
 
-    async def set_operation_mode(self, mode: int) -> None:
+    async def set_operation_mode(self, mode: str) -> None:
         await self._c.async_set_water_heater_operation_mode(mode)

@@ -8,10 +8,10 @@ import "Components"
 ApplicationWindow {
     id: appWindow
     visible: true
-    width: Screen.width
-    height: Screen.height
-    visibility: Window.FullScreen
-    title: qsTr("Baza domowa")
+    width: demoMode ? 1200 : Screen.width
+    height: demoMode ? 800 : Screen.height
+    visibility: demoMode ? Window.Windowed : Window.FullScreen
+    title: demoMode ? "HomeHub — DEMO (symulowane urządzenia)" : qsTr("Baza domowa")
     Material.theme: Material.Dark
     Material.accent: Material.Green
     color: Material.background
@@ -142,6 +142,13 @@ ApplicationWindow {
                             contentLoader.source = "Components/HeaterControl.qml"
                         }
                     }
+                }
+
+                Label {
+                    visible: demoMode
+                    text: "DEMO • symulowane urządzenia"
+                    color: "#ffcc80"
+                    font.pixelSize: 16
                 }
 
                 Item { Layout.fillWidth: true }

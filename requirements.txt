@@ -19,3 +19,7 @@ pytest-asyncio>=0.23.0
 pytest-cov>=5.0.0
 pyinstaller>=6.0.0
 
+
+# MQTT sensors and BLE washer (imported at runtime)
+paho-mqtt>=2.0.0
+bleak>=0.21.0

@@ -29,6 +29,8 @@ class QtHomeBackend(QObject):
     modeOperating = Signal(str)
     powerStatus = Signal(bool)
 
+    boilerSettingsFinished = Signal(bool, str)
+
     # Washer
     washerOnlineChanged = Signal(bool)
     washerRemainingChanged = Signal(int)
@@ -77,8 +79,10 @@ class QtHomeBackend(QObject):
             print("Not working climate refresh")
         try:
             await self._boiler.refresh()
-        except:
-            print("Not working boiler refresh")
+            self.boilerOnlineChanged.emit(True)
+        except Exception as exc:
+            self.boilerOnlineChanged.emit(False)
+            print(f"Not working boiler refresh: {exc}")
 
         # Odśwież grzejniki jeśli są dostępne
         if self._heater:
@@ -118,9 +122,9 @@ class QtHomeBackend(QObject):
                 traceback.print_exc()
         if self._sensors:
             try:
-                for room in ["lazienka", "jadalnia"]:
-                    self.sensorTempChanged.emit(room, self._sensors.get_temperature(f"czujnik_{room}"))
-                    self.sensorHumidityChanged.emit(room, self._sensors.get_humidity(f"czujnik_{room}"))
+                for room in self._sensors.rooms():
+                    self.sensorTempChanged.emit(room, self._sensors.get_temperature(room))
+                    self.sensorHumidityChanged.emit(room, self._sensors.get_humidity(room))
             except Exception as e:
                 print(f"Not working sensors refresh: {e}")
 
@@ -129,7 +133,6 @@ class QtHomeBackend(QObject):
             self.acSalonOnlineChanged.emit(bool(online.get("Salon")))
             self.acJadalniaOnlineChanged.emit(bool(online.get("Jadalnia")))
             # brak API na online boilera? spróbuj z refresh – błąd emituj False
-            self.boilerOnlineChanged.emit(True)  # jeśli refresh OK
             self.ready.emit(True)
         except Exception as e:
             print(f"Error during init_all: {e}")
@@ -197,6 +200,31 @@ class QtHomeBackend(QObject):
         self.modeReceived.emit(room, self._climate.operating_mode(room))
 
     # --- Boiler
+    @asyncSlot(str)
+    async def set_water_heater_mode(self, mode: str):
+        await self._boiler.set_mode(mode)
+        await self._boiler.refresh()
+        self.modeOperating.emit(self._boiler.get_mode())
+
+    @asyncSlot(float, str)
+    async def apply_water_heater_settings(self, temp: float, mode: str):
+        try:
+            # Await each operation: mode changes can reset the temperature.
+            if mode:
+                await self._boiler.set_mode(mode)
+            await self._boiler.set_target_temp(temp)
+            await self._boiler.refresh()
+            self.targetTemperatureReceived.emit("boiler", self._boiler.get_target_temp())
+            self.modeOperating.emit(self._boiler.get_mode())
+            self.waterTemp.emit("boiler", self._boiler.get_current_temp())
+            self.powerStatus.emit(self._boiler.get_power())
+            self.boilerOnlineChanged.emit(True)
+        except Exception:
+            # A partially applied command must not be presented as success.
+            self.boilerSettingsFinished.emit(False, "Nie udało się zapisać lub odczytać ustawień. Odśwież stan urządzenia.")
+        else:
+            self.boilerSettingsFinished.emit(True, "Wysłano ustawienia i odświeżono stan urządzenia.")
+
     @asyncSlot(bool)
     async def set_water_heater_power(self, power: bool):
         await self._boiler.set_power(power)

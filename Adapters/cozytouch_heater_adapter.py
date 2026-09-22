@@ -1,3 +1,4 @@
+import asyncio
 from Ports.heater import HeaterPort
 from atlantic_client import AtlanticCozytouchClient
 
@@ -16,10 +17,14 @@ class CozyTouchHeaterAdapter(HeaterPort):
         self._client = client
         self._device_id = device_id
 
+    async def _command(self, method, *args, **kwargs):
+        if not await asyncio.to_thread(method, *args, **kwargs):
+            raise RuntimeError("Atlantic API did not accept the heater command")
+
     async def refresh(self) -> None:
         """Odśwież stan grzejnika"""
         # Client odświeża wszystkie urządzenia naraz
-        self._client.get_devices()
+        await asyncio.to_thread(self._client.get_devices)
 
     async def set_power(self, on: bool) -> None:
         """
@@ -29,10 +34,10 @@ class CozyTouchHeaterAdapter(HeaterPort):
         """
         if on:
             # Włącz - ustaw normalną temperaturę (np. 20°C)
-            self._client.set_target_temperature(self._device_id, 20.0, duration_minutes=120)
+            await self._command(self._client.set_target_temperature, self._device_id, 20.0, duration_minutes=120)
         else:
             # Wyłącz - ustaw minimalną temperaturę (7°C) lub anuluj wyjątek
-            self._client.cancel_exception_mode(self._device_id)
+            await self._command(self._client.cancel_exception_mode, self._device_id)
 
     def get_power(self) -> bool:
         """
@@ -56,7 +61,7 @@ class CozyTouchHeaterAdapter(HeaterPort):
             temp_c: Temperatura w °C (7-28)
             duration_minutes: Czas trwania wyjątku (domyślnie 120 min = 2h)
         """
-        self._client.set_target_temperature(self._device_id, temp_c, duration_minutes)
+        await self._command(self._client.set_target_temperature, self._device_id, temp_c, duration_minutes)
 
     def get_target_temperature(self) -> float:
         """
@@ -84,9 +89,9 @@ class CozyTouchHeaterAdapter(HeaterPort):
         - "program" - tryb programowalny (capability 184 = 1)
         """
         if mode.lower() == "manual":
-            self._client.set_mode_manual(self._device_id)
+            await self._command(self._client.set_mode_manual, self._device_id)
         elif mode.lower() == "program":
-            self._client.set_mode_program(self._device_id)
+            await self._command(self._client.set_mode_program, self._device_id)
         else:
             raise ValueError(f"Unknown mode: {mode}. Use 'manual' or 'program'")
 

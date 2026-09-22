@@ -11,4 +11,4 @@ class WaterHeaterService:
     def get_target_temp(self) -> float: return self._b.get_target_temperature()
     def get_mode(self) -> str: return self._b.get_mode_text()
     def get_current_temp(self) -> float: return self._b.get_current_temperature()
-    async def set_mode(self, mode: int): await self._b.set_operation_mode(mode)
+    async def set_mode(self, mode: str): await self._b.set_operation_mode(mode)

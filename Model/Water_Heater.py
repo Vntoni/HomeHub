@@ -29,7 +29,9 @@ class Boiler:
         await self.device.async_set_lydos_temperature("A842E373D878", 45.0)
 
 if __name__ == "__main__":
-    b = Boiler("antekmigala@gmail.com", "F5eotvky!", "A842E373D878")
+    import os
+    b = Boiler(os.environ["AIRSTAGE_USER"], os.environ["ARISTON_PWD"],
+               os.environ["ARISTON_DEVICE_ID"])
     # print(b.info)
     print("Features:", b.features)
     print(b.device.water_heater_current_temperature)

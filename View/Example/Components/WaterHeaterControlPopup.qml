@@ -9,6 +9,8 @@ Popup {
     Material.theme: Material.Dark
     Material.accent: Material.BlueGrey
 
+    property bool saving: false
+    property string saveMessage: ""
     property string room: ""
     property string currentMode: ""
     property real initialTemperature: 65
@@ -191,16 +193,18 @@ Popup {
 
         // === PRZYCISK "SET" ===
         Button {
-            text: "Set"
+            enabled: !saving
+            text: saving ? "Zapisywanie…" : "Set"
             font.pixelSize: 18
             Layout.fillWidth: true
             onClicked: {
-                backend.set_water_target_temp(control.value)
-                if (econButton.checked) backend.set_water_heater_mode("GREEN")
-                else if (memoryButton.checked) backend.set_water_heater_mode("IMEMORY")
-                else if (programButton.checked) backend.set_water_heater_mode("PROGRAM")
-                else if (boostButton.checked) backend.set_water_heater_mode("BOOST")
-                messageDialog.open()
+                var mode = econButton.checked ? "GREEN"
+                         : memoryButton.checked ? "IMEMORY"
+                         : programButton.checked ? "PROGRAM"
+                         : boostButton.checked ? "BOOST" : ""
+                saving = true
+                saveMessage = "Zapisywanie…"
+                backend.apply_water_heater_settings(control.value, mode)
             }
             Material.background: "#29d884"
             Material.foreground: "#0f1217"
@@ -208,15 +212,31 @@ Popup {
         }
     }
 
+    Dialog {
+        id: resultDialog
+        anchors.centerIn: parent
+        modal: true
+        standardButtons: Dialog.Ok
+        Label { text: saveMessage; wrapMode: Text.WordWrap; width: 350 }
+    }
+
     Connections {
         target: backend
 
+        function onBoilerSettingsFinished(success, message) {
+            saving = false
+            saveMessage = message
+            resultDialog.open()
+        }
+
         function onTargetTemperatureReceived(boiler, temperature) {
+            if (boiler !== "boiler") return
             initialTemperature = temperature
             control.value = temperature
         }
 
         function onWaterTemp(boiler, waterTemperature) {
+            if (boiler !== "boiler") return
             waterTemp = waterTemperature
         }
 

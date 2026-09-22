@@ -41,7 +41,6 @@ async def build_backend() -> QtHomeBackend:
     # --- Ariston (bojler) ---
     boiler_client = None
     try:
-        await ariston._async_connect(s.user, s.ariston_pwd)
         boiler_client = await ariston.async_hello(s.user, s.ariston_pwd, s.ariston_device_id,  True, "en-US")
     except Exception as e:
         print(f"Błąd logowania do Boilera API: {e}")

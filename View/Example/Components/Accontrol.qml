@@ -445,8 +445,7 @@ Rectangle {
                     enabled: boilerRect.online
                     anchors.horizontalCenter: parent.horizontalCenter
                     onToggled: {
-                        boilerControl.checked ? backend.turn_on_ac('Boiler') :
-                        backend.turn_off_ac('Boiler')
+                        backend.set_water_heater_power(boilerControl.checked)
                             }
                     layer.enabled: true
                     layer.effect: MultiEffect {

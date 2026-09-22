@@ -40,6 +40,9 @@ class SensorService:
             pass
 
 
+    def rooms(self):
+        return tuple(self._sensor)
+
     def get_data(self, room: str) -> dict:
         """Pobierz aktualne dane z czujnika"""
         return self._sensor[room].get_data()

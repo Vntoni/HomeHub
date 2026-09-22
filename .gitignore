@@ -80,3 +80,14 @@ test_*.py
 diagnose_*.py
 check_*.py
 analyze_*.py
+
+# Regression tests belong in version control
+!Tests/**/test_*.py
+
+.venv-test/
+
+.venv-demo/
+
+.venv-demo/
+.venv-test/
+!Tests/**/test_*.py

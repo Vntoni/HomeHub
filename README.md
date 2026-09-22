@@ -32,3 +32,59 @@ Project In Progress...
 <img width="1273" height="714" alt="image" src="https://github.com/user-attachments/assets/cf4fd5d7-e49e-4c54-a012-da29fad075c1" />
 
 
+
+
+## Local verification
+
+Use Python 3.11 or newer (the current pyairstage dependency uses `enum.StrEnum`).
+Install `requirements.txt`, then run:
+
+```sh
+QT_QPA_PLATFORM=offscreen python -m pytest Tests/ --cov=App --cov=Adapters --cov=Ports --cov=Interface --cov-report=term-missing
+```
+
+Tests use fake device clients and do not control household devices. CI runs this
+suite before the existing deployment job. Deployment still runs only on pushes
+to main, on the Raspberry Pi self-hosted runner.
+
+### Integration issues still requiring device verification
+
+- Atlantic capability 157 describes a temporary temperature override; it does not
+  establish electrical power or active heating. The existing power indicator is
+  still a heuristic. Cancelling the override can resume the schedule rather than
+  switch the heater off. Compare sanitized API snapshots in those states before
+  implementing reliable power controls.
+- Check boiler mode/temperature changes and readback on the actual device. The
+  panel now sequences mode and temperature writes and reports refresh failures;
+  a successful readback request alone does not guarantee the new settings have
+  already propagated through the cloud.
+- MQTT callbacks currently run on another thread; database recording needs an
+  explicit handoff to the asyncio event loop. Missing sensor values also still
+  default to zero and need a separate unavailable/stale state.
+- Startup still depends on successful AC and boiler authentication. Device
+  isolation, retry/backoff, and deployment rollback need further work.
+- A credential was removed from the legacy boiler example. Rotate that credential;
+  editing the file does not remove it from Git history.
+
+
+## Demo on macOS
+
+The demo opens in a regular 1200×800 window and uses in-memory devices: two ACs,
+three heaters, an Ariston-like boiler, and fixed temperature/humidity readings.
+Controls change only simulated settings; changes reset when the app restarts.
+It does not load credentials or connect to cloud APIs, MQTT, BLE, or PostgreSQL.
+This is an interface demo, not a simulation of heating physics or device protocols.
+The Raspberry Pi entry point and CI deployment remain in live mode.
+
+From the repository directory, using Python 3.11 or newer:
+
+```sh
+python3 -m venv .venv-demo
+source .venv-demo/bin/activate
+python -m pip install -r requirements-demo.txt
+python run_demo.py
+```
+
+Close with the window close button or the app's × button.
+
+After setup, you can also double-click `run-demo.command` in Finder.

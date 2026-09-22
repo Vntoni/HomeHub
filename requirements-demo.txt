@@ -1,0 +1,5 @@
+# Python 3.11+; no device credentials required.
+PySide6==6.8.3
+qasync==0.28.0
+# Imported for type annotations by the shared backend/services.
+pyairstage==3.2.2

@@ -11,7 +11,7 @@ from PySide6.QtCore import qInstallMessageHandler
 from qasync import QEventLoop, asyncSlot
 
 # (opcjonalnie) jeśli masz ten moduł z zasobami
-import images.images  # noqa: F401
+import View.images.images  # noqa: F401
 
 # Windows: zgodnie z Twoim kodem
 if sys.platform.startswith("win"):
@@ -23,7 +23,7 @@ def messageHandler(mode, context, message):
 
 qInstallMessageHandler(messageHandler)
 
-def main():
+def main(demo=False):
     os.environ["QT_LOGGING_RULES"] = "qt.qml=true; qt.quick=true;"
 
     app = QGuiApplication(sys.argv)
@@ -37,13 +37,18 @@ def main():
         # Tryb deweloperski – View/ zawiera folder Example/ z qmldir
         qml_import_path = str(Path(__file__).parent)
 
-    from Compositions.compositions import build_backend
+    if demo:
+        from Compositions.demo import build_demo_backend as build_backend
+    else:
+        from Compositions.compositions import build_backend
 
     with loop:
         backend = loop.run_until_complete(build_backend())
 
         engine = QQmlApplicationEngine()
         engine.rootContext().setContextProperty("backend", backend)
+        engine.rootContext().setContextProperty("demoMode", demo)
+        engine.quit.connect(app.quit)
         engine.addImportPath(qml_import_path)
         engine.loadFromModule("Example", "main")
 
