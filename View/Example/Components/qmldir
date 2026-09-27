@@ -6,3 +6,9 @@ TemperatureMap 1.0 TemperatureMap.qml
 WasherMachine 1.0 WasherMachine.qml
 WaterHeaterControlPopup 1.0 WaterHeaterControlPopup.qml
 
+
+DeviceCard 1.0 DeviceCard.qml
+TemperatureStepper 1.0 TemperatureStepper.qml
+SettingsPopup 1.0 SettingsPopup.qml
+Accontrol 1.0 Accontrol.qml
+PanelButton 1.0 PanelButton.qml

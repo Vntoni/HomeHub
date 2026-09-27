@@ -8,6 +8,7 @@ from pathlib import Path
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import qInstallMessageHandler
+from PySide6.QtQuickControls2 import QQuickStyle
 from qasync import QEventLoop, asyncSlot
 
 # (opcjonalnie) jeśli masz ten moduł z zasobami
@@ -26,6 +27,7 @@ qInstallMessageHandler(messageHandler)
 def main(demo=False):
     os.environ["QT_LOGGING_RULES"] = "qt.qml=true; qt.quick=true;"
 
+    QQuickStyle.setStyle("Material")
     app = QGuiApplication(sys.argv)
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
@@ -56,7 +58,10 @@ def main(demo=False):
             sys.exit(-1)
 
         loop.create_task(backend.init_all())
-        loop.run_forever()
+        try:
+            loop.run_forever()
+        finally:
+            loop.run_until_complete(backend.shutdown())
 
 if __name__ == "__main__":
     # try:

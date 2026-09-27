@@ -6,14 +6,17 @@ import QtQuick.Effects
 // Popup z mapą temperatury – rzut parteru z lotu ptaka
 Popup {
     id: tempMapPopup
+    objectName: "temperatureMap"
     Material.theme: Material.Dark
     Material.accent: Material.Green
 
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: 700
-    height: 480
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(700, parent.width - 32)
+    height: Math.min(480, parent.height - 32)
 
     // Dane temperatur – ustawiać z zewnątrz lub przez backend
     property real tempSalon:    NaN
@@ -31,6 +34,7 @@ Popup {
         target: backend
 
         function onSensorTempChanged(room, temp) {
+            if (room === "salon") tempMapPopup.tempSalon = temp
             if (room === "lazienka")    tempMapPopup.tempWC    = temp
             if (room === "jadalnia") tempMapPopup.tempJadalnia = temp
         }
@@ -41,10 +45,7 @@ Popup {
         }
     }
 
-    onOpened: {
-        tempMapPopup.x = (parent.width  - tempMapPopup.width)  / 2
-        tempMapPopup.y = (parent.height - tempMapPopup.height) / 2
-    }
+
 
     background: Rectangle {
         anchors.fill: parent
@@ -87,14 +88,29 @@ Popup {
         anchors.margins: 16
 
         // Nagłówek
-        Text {
+        Item {
             id: header
-            text: "Room Temperature Map"
-            color: "#ffffff"
-            font.pixelSize: 18
-            font.bold: true
             anchors.top: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            height: 48
+            Text {
+                text: "Mapa temperatury"
+                color: "#eef5fa"
+                font.pixelSize: 18
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+            }
+            PanelButton {
+                objectName: "closeMap"
+                text: "×"
+                font.pixelSize: 26
+                width: 48
+                height: 48
+                anchors.right: parent.right
+                Accessible.name: "Zamknij mapę temperatury"
+                onClicked: tempMapPopup.close()
+            }
         }
 
         // ── Canvas – ściany ──────────────────────────────────────────────
@@ -118,7 +134,7 @@ Popup {
             property real tempJadalnia:  tempMapPopup.tempJadalnia
             property real tempPrzedpokoj:tempMapPopup.tempPrzedpokoj
             property real tempWC:        tempMapPopup.tempWC
-            property real humSalon:      tempMapPopup.humSalon
+            property real humSalon:      NaN
             property real humJadalnia:   tempMapPopup.humJadalnia
 
             onPaint: {

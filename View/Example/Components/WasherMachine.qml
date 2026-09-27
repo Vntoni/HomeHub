@@ -1,102 +1,38 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.Effects
 
 Rectangle {
-    id: washerPill
-    property bool showWhenIdle: true
+    id: root
+    objectName: "washerStatus"
     property bool online: false
-    property int  remaining: -1
+    property int remaining: -1
     property string lastSeen: ""
-    layer.enabled: true
-    layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowOpacity: 0.35     // 0.28–0.40
-            shadowBlur: 0.30
-            shadowHorizontalOffset: 7
-            shadowVerticalOffset: 4
-            saturation: 0.2
-
-
-            }
-
-    // widoczność wg statusu
-    visible: online ? (showWhenIdle || remaining > 0) : true
-    z: 100
-
-    // rozmiary pigułki
-    implicitHeight: 160
-    implicitWidth: 300
-    radius: 30
-
-    // tło wg stanu (zostawiam Twoje)
-    color: !online ? "#b84a4a" : (remaining > 0 ? "#1f8f3a" : "#b84a4a")
-    opacity: 0.95
-    border.color: "#d8dfd8"; border.width: 1
-
-    // --------- TREŚĆ ---------
+    implicitHeight: 76
+    radius: 16
+    color: "#202b36"
+    border.color: "#334352"
     RowLayout {
-        id: row
         anchors.fill: parent
-        anchors.margins: 12         // ogólny margines pigułki
-        spacing: 0
-
-        // Ikona po lewej z lekkim marginesem
-        Image {
-            source: "qrc:/icons128/laundry-machine_128.png"
-            width: 56; height: 56
-            Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-            Layout.leftMargin: 6
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowOpacity: 0.25     // 0.28–0.40
-                shadowBlur: 0.60
-                shadowHorizontalOffset: 3
-                shadowVerticalOffset: 3
-                saturation: 0.1
-
-
-                    }
-        }
-
-        // „sprężyna” po lewej stronie tekstu
+        anchors.margins: 16
+        spacing: 16
+        Image { source: "qrc:/icons128/laundry-machine_128.png"; Layout.preferredWidth: 36; Layout.preferredHeight: 36; fillMode: Image.PreserveAspectFit }
+        Label { text: "Pralka"; color: "#eef5fa"; font.pixelSize: 19; font.bold: true }
         Item { Layout.fillWidth: true }
-
-        // Tekst na środku – dzięki dwóm sprężynom po bokach
-        Text {
-            id: statusText
-            text: !online ? "OFF"
-                 : (remaining > 0 ? remaining + " min" : "OFF")
-            color: "white"
-            font.pixelSize: 28
-            Layout.alignment: Qt.AlignVCenter
-            horizontalAlignment: Text.AlignHCenter
+        Label {
+            objectName: "washerStatusText"
+            text: !root.online ? "Brak połączenia" : (root.remaining > 0 ? "Pozostało " + root.remaining + " min" : (root.remaining === 0 ? "Nieaktywna" : "Oczekiwanie na odczyt"))
+            color: root.online && root.remaining > 0 ? "#82d5ba" : "#a9b8c6"
+            font.pixelSize: 18
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignRight
+            wrapMode: Text.WordWrap
         }
-
-        // „sprężyna” po prawej – żeby tekst był idealnie centrowany
-        Item { Layout.fillWidth: true }
     }
-
-    // delikatne oddychanie tylko podczas prania
-    SequentialAnimation on scale {
-        running: online && remaining > 0
-        loops: Animation.Infinite
-        NumberAnimation { from: 1.0; to: 1.06; duration: 650; easing.type: Easing.InOutSine }
-        NumberAnimation { from: 1.06; to: 1.0; duration: 650; easing.type: Easing.InOutSine }
-    }
-
-    // sygnały z backendu
     Connections {
         target: backend
-        function onWasherOnlineChanged(v){
-            if (v === true) {
-               washerPill.online = true }
-               }
-        function onWasherRemainingChanged(mins) { washerPill.remaining = mins }
-        function onWasherLastSeenChanged(ts)    { washerPill.lastSeen = ts }
+        function onWasherOnlineChanged(value) { root.online = value; if (!value) root.remaining = -1 }
+        function onWasherRemainingChanged(value) { root.remaining = value }
+        function onWasherLastSeenChanged(value) { root.lastSeen = value }
     }
-
-    Component.onCompleted: backend.start_washer_monitor()
 }

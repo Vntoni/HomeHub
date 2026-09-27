@@ -1,255 +1,49 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.Effects
+import "Ui.js" as Ui
 
-Popup {
-    id: waterHeaterPopup
-    Material.theme: Material.Dark
-    Material.accent: Material.BlueGrey
-
-    property bool saving: false
-    property string saveMessage: ""
-    property string room: ""
-    property string currentMode: ""
-    property real initialTemperature: 65
-    property real waterTemp: 40
-    property bool initialGreen: false
-    property bool initialBoost: false
-    property bool initialMemory: false
-    property bool initialProgram: false
-
-    modal: true
-    focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: 400 * 1.5
-    height: 460 * 1.5
-    enter: Transition {
-        NumberAnimation { property: "opacity"; from: 0.0; to: 0.9 }
-    }
-
-    background: Rectangle {
-        color: Material.background
-        radius: 14
-        layer.enabled: true
-            layer.effect: MultiEffect {
-                id: shadow
-                shadowEnabled: true
-                shadowBlur: 0.8
-                shadowOpacity: 0.5
-                shadowHorizontalOffset: 5
-                shadowVerticalOffset: 4
-
-        }
-    }
-
-    onOpened: {
-        waterHeaterPopup.x = (parent.width - width) / 2
-        waterHeaterPopup.y = (parent.height - height) / 2
-        backend.get_water_target_temp()
-        backend.get_water_temp()
-        backend.get_water_heater_mode()
-        backend.get_water_heater_power()
-    }
-
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: 24
-        spacing: 28
-
-        // === DIAL ===
-        Item {
-    Layout.preferredWidth: 200
-    Layout.preferredHeight: 200
-    Layout.alignment: Qt.AlignHCenter
-
-    Dial {
-        id: control
-        anchors.fill: parent
-        from: 40
-        to: 65
-        stepSize: 0.5
-        snapMode: Dial.SnapAlways
-
-        // Tło okręgu
-        background: Rectangle {
-            x: control.width / 2 - width / 2
-            y: control.height / 2 - height / 2
-            implicitWidth: 140
-            implicitHeight: 140
-            width: Math.max(64, Math.min(control.width, control.height))
-            height: width
-            color: "transparent"
-            radius: width / 2
-            border.color: control.pressed ? "#d9e8e9" : "#e9f4f5"
-            opacity: control.enabled ? 1 : 0.3
-        }
-
-        // Obracający się uchwyt
-        handle: Rectangle {
-            id: handleItem
-            x: control.background.x + control.background.width / 2 - width / 2
-            y: control.background.y + control.background.height / 2 - height / 2
-            width: 16
-            height: 16
-            color: control.pressed ? "#d9e8e9" : "#e9f4f5"
-            radius: 8
-            antialiasing: true
-            opacity: control.enabled ? 1 : 0.3
-
-            transform: [
-                Translate {
-                    y: -Math.min(control.background.width, control.background.height) * 0.4 + handleItem.height / 2
-                },
-                Rotation {
-                    angle: control.angle
-                    origin.x: handleItem.width / 2
-                    origin.y: handleItem.height / 2
-                }
-            ]
-        }
-
-        // Tekst temperatury
-        contentItem: Text {
-            text: control.value.toFixed(1) + "°C"
-            font.pixelSize: 28
-            color: "white"
-            anchors.centerIn: parent
-            anchors.horizontalCenterOffset: 59
-            anchors.verticalCenterOffset: 81
-        }
-    }
-}
-        // === TRYBY ===
-        ColumnLayout {
-            spacing: 8
-            Layout.fillWidth: true
-
-            ButtonGroup { id: modeButton }
-
-            Button {
-                id: econButton
+SettingsPopup {
+    id: root
+    objectName: "boilerPopup"
+    property string selectedMode: ""
+    heading: "Ciepła woda"
+    subtitle: "Temperatura i tryb bojlera"
+    canApply: loaded && isFinite(temperature.value) && selectedMode !== ""
+    onOpened: { reset(); backend.load_device_settings("boiler", "boiler") }
+    onApplyRequested: backend.apply_water_heater_settings(temperature.value, selectedMode)
+    TemperatureStepper { id: temperature; minimum: 40; maximum: 65; Layout.fillWidth: true }
+    Label { id: current; color: "#a9b8c6"; font.pixelSize: 16 }
+    Label { text: "Tryb pracy"; color: "#a9b8c6"; font.pixelSize: 16 }
+    GridLayout {
+        columns: 2
+        Layout.fillWidth: true
+        Repeater {
+            model: ["GREEN", "IMEMORY", "BOOST", "PROGRAM"]
+            PanelButton {
+                text: Ui.mode(modelData)
                 checkable: true
-                checked: initialGreen
-                text: "Eco Mode"
-                font.pixelSize: 18
+                checked: root.selectedMode === modelData
                 Layout.fillWidth: true
-                Layout.preferredHeight: 68
-                ButtonGroup.group: modeButton
-
-                Material.background: checked ? "#558B2F" : "#546e7a"
-                Material.foreground: "white"
-                Material.elevation: 2
-            }
-
-            Button {
-                id: memoryButton
-                checkable: true
-                checked: initialMemory
-                text: "Memory Mode"
-                font.pixelSize: 18
-                Layout.fillWidth: true
-                Layout.preferredHeight: 68
-                ButtonGroup.group: modeButton
-
-                Material.background: checked ? "#5C6BC0" : "#546e7a"
-                Material.foreground: "white"
-                Material.elevation: 2
-            }
-
-            Button {
-                id: boostButton
-                checkable: true
-                checked: initialBoost
-                text: "Boost Mode"
-                font.pixelSize: 18
-                Layout.fillWidth: true
-                Layout.preferredHeight: 68
-                ButtonGroup.group: modeButton
-
-                Material.background: checked ? "#dc6f00" : "#546e7a"
-                Material.foreground: "white"
-                Material.elevation: 2
-            }
-
-            Button {
-                id: programButton
-                checkable: true
-                checked: initialProgram
-                text: "Program Mode"
-                font.pixelSize: 18
-                Layout.fillWidth: true
-                Layout.preferredHeight: 68
-                ButtonGroup.group: modeButton
-
-                Material.background: checked ? "#039BE5" : "#546e7a"
-                Material.foreground: "white"
-                Material.elevation: 2
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 56
+                font.pixelSize: 15
+                onClicked: root.selectedMode = modelData
             }
         }
-
-        Item { Layout.fillHeight: true }
-
-        // === PRZYCISK "SET" ===
-        Button {
-            enabled: !saving
-            text: saving ? "Zapisywanie…" : "Set"
-            font.pixelSize: 18
-            Layout.fillWidth: true
-            onClicked: {
-                var mode = econButton.checked ? "GREEN"
-                         : memoryButton.checked ? "IMEMORY"
-                         : programButton.checked ? "PROGRAM"
-                         : boostButton.checked ? "BOOST" : ""
-                saving = true
-                saveMessage = "Zapisywanie…"
-                backend.apply_water_heater_settings(control.value, mode)
-            }
-            Material.background: "#29d884"
-            Material.foreground: "#0f1217"
-            Material.elevation: 4
-        }
     }
-
-    Dialog {
-        id: resultDialog
-        anchors.centerIn: parent
-        modal: true
-        standardButtons: Dialog.Ok
-        Label { text: saveMessage; wrapMode: Text.WordWrap; width: 350 }
-    }
-
     Connections {
         target: backend
-
-        function onBoilerSettingsFinished(success, message) {
-            saving = false
-            saveMessage = message
-            resultDialog.open()
+        function onDeviceSettingsReceived(kind, room, values) {
+            if (!root.opened || kind !== "boiler") return
+            temperature.value = values.target
+            current.text = "Aktualnie: " + Ui.temperature(values.current)
+            root.selectedMode = values.mode
+            root.loaded = true
         }
-
-        function onTargetTemperatureReceived(boiler, temperature) {
-            if (boiler !== "boiler") return
-            initialTemperature = temperature
-            control.value = temperature
+        function onDeviceSettingsFailed(kind, room, message) {
+            if (root.opened && kind === "boiler") root.finish(false, message)
         }
-
-        function onWaterTemp(boiler, waterTemperature) {
-            if (boiler !== "boiler") return
-            waterTemp = waterTemperature
-        }
-
-        function onModeOperating(mode) {
-            currentMode = mode
-            econButton.checked = mode === "GREEN"
-            memoryButton.checked = mode === "IMEMORY"
-            programButton.checked = mode === "PROGRAM"
-            boostButton.checked = mode === "BOOST"
-        }
-
-        function onPowerStatus(power) {
-            // Możesz dodać logikę jeśli potrzebna
-        }
+        function onBoilerSettingsFinished(success, message) { root.finish(success, message) }
     }
 }

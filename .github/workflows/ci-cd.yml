@@ -39,6 +39,12 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: pytest Tests/ --cov=App --cov=Adapters --cov=Ports --cov=Interface --cov-report=term-missing
 
+      - name: Check touch panel interactions (demo, no network)
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+        run: python Tests/ui_smoke.py
+
   # ────────────────────────────────────────────
   # JOB 2 – build + deploy na RPi5
   # Działa jako self-hosted runner NA RPi5:

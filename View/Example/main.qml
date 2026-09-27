@@ -11,230 +11,107 @@ ApplicationWindow {
     width: demoMode ? 1200 : Screen.width
     height: demoMode ? 800 : Screen.height
     visibility: demoMode ? Window.Windowed : Window.FullScreen
-    title: demoMode ? "HomeHub — DEMO (symulowane urządzenia)" : qsTr("Baza domowa")
+    title: demoMode ? "HomeHub — DEMO (symulowane urządzenia)" : "HomeHub"
     Material.theme: Material.Dark
-    Material.accent: Material.Green
-    color: Material.background
+    Material.accent: "#82d5ba"
+    Material.background: "#202b36"
+    Material.foreground: "#eef5fa"
+    color: "#141d26"
     property bool isReady: false
+    property bool refreshing: false
 
+    ACControlPopup { id: acPopup }
+    WaterHeaterControlPopup { id: waterHeaterPopup }
+    HeaterControlPopup { id: heaterPopup }
+    TemperatureMap { id: tempMapPopup }
 
-
-    Component.onCompleted: {
-        console.log("APP WINDOW SIZE:", width, height)
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: appWindow.width < 700 ? 16 : 28
+        spacing: 16
+        RowLayout {
+            Layout.fillWidth: true
+            ColumnLayout {
+                spacing: 2
+                Label { text: "Dom"; font.pixelSize: 30; font.bold: true }
+                Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : "Temperatura i urządzenia"; color: "#a9b8c6"; font.pixelSize: 14 }
+            }
+            Item { Layout.fillWidth: true }
+            PanelButton {
+                objectName: "refreshDevices"
+                text: appWindow.refreshing ? "Odświeżanie…" : "Odśwież"
+                enabled: appWindow.isReady && !appWindow.refreshing
+                Layout.preferredHeight: 52
+                onClicked: { appWindow.refreshing = true; backend.refresh_connection() }
+            }
+            PanelButton {
+                text: "×"
+                font.pixelSize: 26
+                Layout.preferredWidth: 52
+                Layout.preferredHeight: 52
+                Accessible.name: "Zamknij aplikację"
+                onClicked: Qt.quit()
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            TabBar {
+                id: tabBar
+                Layout.fillWidth: true
+                Layout.maximumWidth: 380
+                TabButton { objectName: "downstairsTab"; text: "Parter"; font.pixelSize: 20; implicitHeight: 56 }
+                TabButton { objectName: "upstairsTab"; text: "Piętro"; font.pixelSize: 20; implicitHeight: 56 }
+            }
+            Item { Layout.fillWidth: true }
+            PanelButton {
+                objectName: "openMap"
+                text: "Mapa temperatury"
+                Layout.preferredWidth: 190
+                visible: tabBar.currentIndex === 0
+                enabled: appWindow.isReady
+                Layout.preferredHeight: 52
+                onClicked: tempMapPopup.open()
+            }
+        }
+        StackLayout {
+            id: pages
+            currentIndex: tabBar.currentIndex
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Accontrol {
+                onAcSettingsRequested: function(room) { acPopup.room = room; acPopup.open() }
+                onBoilerSettingsRequested: waterHeaterPopup.open()
+            }
+            HeaterControl {
+                onSettingsRequested: function(room) { heaterPopup.room = room; heaterPopup.open() }
+            }
+        }
+        WasherMachine { Layout.fillWidth: true }
     }
-
-
-
-        ACControlPopup {
-            id: acPopup
+    Rectangle {
+        anchors.fill: parent
+        color: "#141d26"
+        visible: !appWindow.isReady
+        z: 99
+        Column {
+            anchors.centerIn: parent
+            spacing: 16
+            BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; running: parent.parent.visible }
+            Label { text: "Wczytywanie urządzeń…"; font.pixelSize: 20 }
         }
-        WaterHeaterControlPopup {
-            id: waterHeaterPopup
+    }
+    Timer {
+        interval: 10000
+        repeat: true
+        running: appWindow.isReady && !appWindow.refreshing
+        onTriggered: backend.publish_dashboard()
+    }
+    Connections {
+        target: backend
+        function onReady(ready) {
+            appWindow.isReady = ready
+            appWindow.refreshing = false
+            if (ready) backend.publish_dashboard()
         }
-        HeaterControlPopup {
-            id: heaterPopup
-        }
-        TemperatureMap {
-            id: tempMapPopup
-        }
-        // Busy Indicator Overlay
-        Rectangle {
-            id: loadingOverlay
-            anchors.fill: parent
-            color: "#303030"
-            visible: !appWindow.isReady
-            z: 99
-
-            Column {
-                anchors.centerIn: parent
-                spacing: 20
-
-                // Twój niestandardowy BusyIndicator
-                BusyIndicator {
-                    id: control
-
-                    contentItem: Item {
-                        implicitWidth: 64
-                        implicitHeight: 64
-
-                        Item {
-                            id: item
-                            x: parent.width / 2 - 32
-                            y: parent.height / 2 - 32
-                            width: 64
-                            height: 64
-                            opacity: control.running ? 1 : 0
-
-                            Behavior on opacity {
-                                OpacityAnimator {
-                                    duration: 250
-                                }
-                            }
-
-                            RotationAnimator {
-                                target: item
-                                running: control.visible && control.running
-                                from: 0
-                                to: 360
-                                loops: Animation.Infinite
-                                duration: 1250
-                            }
-
-                            Repeater {
-                                id: repeater
-                                model: 6
-
-                                Rectangle {
-                                    id: delegate
-                                    x: item.width / 2 - width / 2
-                                    y: item.height / 2 - height / 2
-                                    implicitWidth: 10
-                                    implicitHeight: 10
-                                    radius: 5
-                                    color: "#21be2b"
-
-                                    required property int index
-
-                                    transform: [
-                                        Translate {
-                                            y: -Math.min(item.width, item.height) * 0.5 + 5
-                                        },
-                                        Rotation {
-                                            angle: delegate.index / repeater.count * 360
-                                            origin.x: 5
-                                            origin.y: 5
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    }
-
-                    running: true
-                }
-            }
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-
-            // Pasek zakładek + przycisk wyjścia
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 100
-
-                TabBar {
-                    id: tabBar
-                    Layout.preferredHeight: 100
-                    Layout.preferredWidth: 300
-
-                    TabButton {
-                        text: qsTr("Downstairs")
-                        font.pixelSize: 20
-                        onClicked: {
-                            contentLoader.source = "Components/Accontrol.qml"
-                        }
-                    }
-                    TabButton {
-                        text: qsTr("Upstairs")
-                        font.pixelSize: 20
-                        onClicked: {
-                            contentLoader.source = "Components/HeaterControl.qml"
-                        }
-                    }
-                }
-
-                Label {
-                    visible: demoMode
-                    text: "DEMO • symulowane urządzenia"
-                    color: "#ffcc80"
-                    font.pixelSize: 16
-                }
-
-                Item { Layout.fillWidth: true }
-
-                // Przycisk mapy temperatury – widoczny tylko w zakładce Downstairs
-                Button {
-                    id: tempMapBtn
-                    icon.source: "qrc:/icons64/temperature-control_32.png"
-                    icon.width: 32
-                    icon.height: 32
-                    icon.color: "transparent"   // wyłącz monochromatyczne kolorowanie przez Qt
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 50
-                    Layout.alignment: Qt.AlignVCenter
-                    opacity: 0.9
-                    Material.accent: Material.Green
-                    visible: tabBar.currentIndex === 0   // tylko Downstairs
-
-                    ToolTip.visible: hovered
-                    ToolTip.text: "Mapa temperatury"
-
-                    onClicked: tempMapPopup.open()
-                    HoverHandler { onHoveredChanged: parent.opacity = hovered ? 1.0 : 0.7 }
-                }
-
-                // Przycisk wyjścia – dyskretny, w prawym górnym rogu
-                Button {
-                    text: "x"
-                    font.pixelSize: 18
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 50
-                    Layout.rightMargin: 10
-                    Layout.alignment: Qt.AlignVCenter
-                    opacity: 0.5
-                    Material.accent: Material.Red
-
-                    ToolTip.visible: hovered
-                    ToolTip.text: "Zamknij aplikację"
-
-                    onClicked: Qt.quit()
-
-                    // Podświetl przy hover/press
-                    HoverHandler { onHoveredChanged: parent.opacity = hovered ? 1.0 : 0.5 }
-                }
-
-
-
-            }
-
-
-
-            Rectangle {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignHCenter
-                color: Material.background
-                anchors.margins: 10
-
-                // Loader do dynamicznego ładowania widoków
-                Loader {
-                    id: contentLoader
-                    anchors.fill: parent
-                    anchors.margins: 10
-
-                    onStatusChanged: {
-                        console.log("Loader status changed:", status)
-                        if (status === Loader.Error) {
-                            console.error("Loader error:", contentLoader.sourceComponent)
-                        }
-                        if (status === Loader.Ready) {
-                            console.log("Loader ready, item:", contentLoader.item)
-                        }
-                    }
-                }
-            }
-        }
-
-
-        Connections {
-            target: backend
-
-            function onReady(ready) {
-                if (ready && !isReady) {
-                    contentLoader.source = "Components/Accontrol.qml"
-                }
-                isReady = ready
-            }
-        }
+    }
 }

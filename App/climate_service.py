@@ -17,6 +17,9 @@ class ClimateService:
         for ac in self._units.values():
             await ac.refresh()
 
+    async def refresh(self, room: str) -> None:
+        await self._get(room).refresh()
+
     async def turn_on(self, room: str) -> None:
         await self._get(room).turn_on()
 

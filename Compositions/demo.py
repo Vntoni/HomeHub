@@ -7,10 +7,11 @@ from App.sensor_service import SensorService
 class DemoClimate:
     def __init__(self):
         self.units = {room: dict(current=21.5, target=22.0, mode="HEAT",
-                                power=False, economy=False, powerful=False, low_noise=False)
+                                power=True, economy=False, powerful=False, low_noise=False)
                       for room in ("Salon", "Jadalnia")}
 
     async def refresh_all(self): pass
+    async def refresh(self, room): pass
     def online_map(self): return {room: True for room in self.units}
     def temp_indoor(self, room): return self.units[room]["current"]
     def target_temp(self, room): return self.units[room]["target"]
@@ -18,8 +19,13 @@ class DemoClimate:
     def economy(self, room): return self.units[room]["economy"]
     def powerful(self, room): return self.units[room]["powerful"]
     def low_noise(self, room): return self.units[room]["low_noise"]
-    async def turn_on(self, room): self.units[room]["power"] = True
-    async def turn_off(self, room): self.units[room]["power"] = False
+    async def turn_on(self, room):
+        self.units[room]["power"] = True
+        if self.units[room]["mode"] == "OFF":
+            self.units[room]["mode"] = "HEAT"
+    async def turn_off(self, room):
+        self.units[room]["power"] = False
+        self.units[room]["mode"] = "OFF"
     async def set_target_temp(self, room, temp): self.units[room]["target"] = temp
     async def set_operating_mode(self, room, mode): self.units[room]["mode"] = mode
     async def set_economy(self, room, mode): self.units[room]["economy"] = mode == "ON"
@@ -47,6 +53,7 @@ class DemoHeaters:
                       for room in ("Juras", "Migacze", "Julia")}
 
     async def refresh_all(self): pass
+    async def refresh(self, room): pass
     def online_map(self): return {room: True for room in self.units}
     def get_current_temp(self, room): return self.units[room]["current"]
     def get_target_temp(self, room): return self.units[room]["target"]

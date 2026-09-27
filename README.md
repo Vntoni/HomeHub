@@ -115,3 +115,22 @@ with `systemctl status user@1000.service` (1000 is miggie's UID on this Pi).
 The workflow never ignores errors stopping the application. Deployment jobs are
 serialized, and startup is checked again after ten seconds; this checks process
 availability, not device connectivity or successful display rendering.
+### Touch panel UI verification
+
+The touch panel uses compact, responsive cards and explicit **Ustawienia** buttons.
+AC, boiler and heater settings use a shared temperature stepper and report the
+result of each save. A successful command/readback does not guarantee immediate
+cloud propagation. Heater switches describe a temporary temperature override,
+not verified electrical power.
+
+After installing the demo requirements and pytest dependencies:
+
+```sh
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software python Tests/ui_smoke.py
+```
+
+Pass an optional output directory to save screenshots. This check uses demo
+services with network access blocked, exercises settings and power controls,
+checks failure feedback and washer states, and renders 1280×720, 800×480 and
+720×1280 layouts. Small screens scroll the cards and the body of settings dialogs;
+the apply and close buttons remain outside the scrolling form.
