@@ -1,6 +1,6 @@
 from typing import Dict
 
-from pyairstage.constants import OperationMode, BooleanProperty, BooleanDescriptors
+from pyairstage.constants import OperationMode, BooleanProperty, BooleanDescriptors, FanSpeed
 
 from Ports.ac import ACUnitPort
 
@@ -56,6 +56,12 @@ class ClimateService:
         mode = BooleanProperty[mode]
         print(f"Setting low noise for room: {room} with mode: {mode}")
         await self._get(room).set_outdoor_low_noise(mode)
+
+    def fan_speed(self, room: str) -> str:
+        return self._get(room).get_fan_speed()
+
+    async def set_fan_speed(self, room: str, speed: str) -> None:
+        await self._get(room).set_fan_speed(FanSpeed[speed])
 
     def operating_mode(self, room: str) -> str:
         return self._get(room).get_operating_mode()

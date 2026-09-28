@@ -8,21 +8,26 @@ SettingsPopup {
     objectName: "acPopup"
     property string room: ""
     property string selectedMode: ""
+    property string selectedFanSpeed: ""
+    property string currentFanSpeed: ""
+    property bool fanSpeedEdited: false
     heading: room + " · Klimatyzacja"
-    subtitle: "Temperatura i tryb pracy"
-    canApply: loaded && isFinite(temperature.value) && selectedMode !== ""
+    subtitle: "Temperatura, tryb pracy i nawiew"
+    canApply: loaded && (selectedMode === "OFF" || selectedMode === "FAN" || isFinite(temperature.value)) && selectedMode !== ""
     onOpened: { reset(); backend.load_device_settings("ac", room) }
-    onApplyRequested: backend.apply_ac_settings(room, temperature.value, selectedMode, economy.checked, powerful.checked, quiet.checked)
-    TemperatureStepper { id: temperature; Layout.fillWidth: true }
+    onApplyRequested: backend.apply_ac_settings(room, temperature.value, selectedMode, economy.checked, powerful.checked, quiet.checked, fanSpeedEdited ? selectedFanSpeed : "")
+    TemperatureStepper { id: temperature; Layout.fillWidth: true; enabled: root.selectedMode !== "OFF" && root.selectedMode !== "FAN" }
     Label { text: "Tryb pracy"; color: "#a9b8c6"; font.pixelSize: 16 }
     GridLayout {
-        columns: 2
+        columns: width >= 440 ? 3 : 2
         Layout.fillWidth: true
         Repeater {
             model: ["COOL", "HEAT", "FAN", "DRY", "AUTO", "OFF"]
             PanelButton {
+                objectName: "acMode_" + modelData
                 text: Ui.mode(modelData)
                 checkable: true
+                autoExclusive: true
                 checked: root.selectedMode === modelData
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
@@ -31,6 +36,34 @@ SettingsPopup {
                 onClicked: root.selectedMode = modelData
             }
         }
+    }
+    Label { text: "Poziom nawiewu"; color: "#a9b8c6"; font.pixelSize: 16 }
+    GridLayout {
+        columns: width >= 500 ? 5 : (width >= 340 ? 3 : 2)
+        Layout.fillWidth: true
+        enabled: root.selectedMode !== "OFF"
+        Repeater {
+            model: ["QUIET", "LOW", "MEDIUM", "HIGH", "AUTO"]
+            PanelButton {
+                objectName: "fanSpeed_" + modelData
+                text: Ui.fanSpeed(modelData)
+                checkable: true
+                autoExclusive: true
+                checked: root.selectedFanSpeed === modelData
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 50
+                onClicked: { root.selectedFanSpeed = modelData; root.fanSpeedEdited = true }
+            }
+        }
+    }
+    Label {
+        objectName: "fanSpeedReadback"
+        text: "Odczyt nawiewu: " + Ui.fanSpeed(root.currentFanSpeed)
+        color: "#a9b8c6"
+        font.pixelSize: 14
+        Layout.fillWidth: true
+        wrapMode: Text.WordWrap
     }
     CheckBox { id: economy; property bool available: false; text: "Tryb ekonomiczny"; Layout.fillWidth: true; enabled: available && !powerful.checked }
     CheckBox { id: powerful; property bool available: false; enabled: available; text: "Zwiększona moc"; Layout.fillWidth: true; onToggled: { if (checked) economy.checked = false } }
@@ -41,6 +74,9 @@ SettingsPopup {
             if (!root.opened || kind !== "ac" || room !== root.room) return
             temperature.value = values.target
             root.selectedMode = values.mode
+            root.selectedFanSpeed = values.fan_speed
+            root.currentFanSpeed = values.fan_speed
+            root.fanSpeedEdited = false
             economy.available = values.economy !== null
             economy.checked = !!values.economy
             powerful.available = values.powerful !== null
@@ -51,6 +87,9 @@ SettingsPopup {
         }
         function onDeviceSettingsFailed(kind, room, message) {
             if (root.opened && kind === "ac" && room === root.room) root.finish(false, message)
+        }
+        function onAcFanSpeedReceived(room, speed) {
+            if (root.opened && room === root.room) root.currentFanSpeed = speed
         }
         function onAcSettingsFinished(room, success, message) {
             if (room === root.room) root.finish(success, message)

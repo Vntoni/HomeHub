@@ -97,15 +97,38 @@ async def run():
     await click(window, find(salon, "deviceSettings"))
     ac = find(window, "acPopup")
     assert ac.property("opened") and ac.property("loaded"), warnings
+    assert ac.property("selectedFanSpeed") == "AUTO"
+    await click(window, find(ac, "fanSpeed_AUTO"))
+    assert find(ac, "fanSpeed_AUTO").property("checked")
     await click(window, find(ac, "temperaturePlus"))
+    await click(window, find(ac, "fanSpeed_QUIET"))
     # An unrelated boiler update cannot overwrite the AC draft.
     backend.targetTemperatureReceived.emit("boiler", 65.0)
     screenshot(window, "02-klimatyzacja")
     await click(window, find(ac, "applySettings"))
     assert backend._climate.target_temp("Salon") == 22.5
+    assert backend._climate.fan_speed("Salon") == "QUIET"
+    assert ac.property("currentFanSpeed") == "QUIET"
     assert not ac.property("saving") and not ac.property("failed")
     assert salon.property("targetTemperature") == 22.5
     screenshot(window, "03-wynik-zapisu")
+    await click(window, find(ac, "closeSettings"))
+    await click(window, find(salon, "deviceSettings"))
+    assert ac.property("selectedFanSpeed") == "QUIET"
+    for speed in ["LOW", "MEDIUM", "HIGH", "AUTO"]:
+        await click(window, find(ac, "fanSpeed_" + speed))
+        await click(window, find(ac, "applySettings"))
+        assert backend._climate.fan_speed("Salon") == speed
+        assert ac.property("currentFanSpeed") == speed
+    await click(window, find(ac, "acMode_FAN"))
+    assert not find(ac, "temperaturePlus").property("enabled")
+    await click(window, find(ac, "fanSpeed_HIGH"))
+    await click(window, find(ac, "applySettings"))
+    assert backend._climate.operating_mode("Salon") == "FAN"
+    assert backend._climate.fan_speed("Salon") == "HIGH"
+    await click(window, find(ac, "closeSettings"))
+    await click(window, find(find(window, "card_Jadalnia"), "deviceSettings"))
+    assert ac.property("selectedFanSpeed") == "AUTO"
     await click(window, find(ac, "closeSettings"))
 
     await click(window, find(find(window, "card_boiler"), "deviceSettings"))
@@ -163,6 +186,14 @@ async def run():
         assert heater.property("width") <= width and heater.property("height") <= height
         screenshot(window, f"08-popup-{width}x{height}")
         await click(window, find(heater, "closeSettings"))
+        await click(window, find(window, "downstairsTab"))
+        await click(window, find(salon, "deviceSettings"))
+        await click(window, find(ac, "fanSpeed_LOW"))
+        assert ac.property("selectedFanSpeed") == "LOW"
+        assert ac.property("width") <= width and ac.property("height") <= height
+        screenshot(window, f"09-nawiew-{width}x{height}")
+        await click(window, find(ac, "closeSettings"))
+        await click(window, find(window, "upstairsTab"))
     await backend.shutdown()
     engine.clearComponentCache()
     errors = [w for w in warnings if "Populating font family aliases" not in w]

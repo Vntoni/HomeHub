@@ -134,3 +134,13 @@ services with network access blocked, exercises settings and power controls,
 checks failure feedback and washer states, and renders 1280×720, 800×480 and
 720×1280 layouts. Small screens scroll the cards and the body of settings dialogs;
 the apply and close buttons remain outside the scrolling form.
+
+
+AC settings also expose **Cisza / Niska / Średnia / Wysoka / Auto** for indoor fan
+speed, separately from the outdoor low-noise option. The adapter uses
+`pyairstage.FanSpeed` through `set_fan_speed` (`iu_fan_spd`): QUIET=2, LOW=5,
+MEDIUM=8, HIGH=11, AUTO=0. The form reads the existing fan level on open and
+shows its readback after saving. Unchanged intermediate readings are preserved;
+fan-only mode does not send a target-temperature command. Unit tests exercise
+the real pyairstage encoding with a fake transport; live-device verification is
+still required. Reference: [pyairstage fan constants](https://github.com/danielkaldheim/pyairstage/blob/master/pyairstage/constants.py).

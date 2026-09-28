@@ -8,3 +8,9 @@ function mode(value) {
         BOOST: "Szybkie nagrzewanie", PROGRAM: "Harmonogram", manual: "Ręczny", program: "Harmonogram"}
     return labels[value] || "Nieznany"
 }
+
+function fanSpeed(value) {
+    var labels = {QUIET: "Cisza", LOW: "Niska", MEDIUM: "Średnia", HIGH: "Wysoka", AUTO: "Auto",
+        MEDIUM_LOW: "Pośrednia: niska / średnia", MEDIUM_HIGH: "Pośrednia: średnia / wysoka"}
+    return labels[value] || "Brak odczytu"
+}

@@ -7,7 +7,7 @@ from App.sensor_service import SensorService
 class DemoClimate:
     def __init__(self):
         self.units = {room: dict(current=21.5, target=22.0, mode="HEAT",
-                                power=True, economy=False, powerful=False, low_noise=False)
+                                fan_speed="AUTO", power=True, economy=False, powerful=False, low_noise=False)
                       for room in ("Salon", "Jadalnia")}
 
     async def refresh_all(self): pass
@@ -15,6 +15,8 @@ class DemoClimate:
     def online_map(self): return {room: True for room in self.units}
     def temp_indoor(self, room): return self.units[room]["current"]
     def target_temp(self, room): return self.units[room]["target"]
+    def fan_speed(self, room): return self.units[room]["fan_speed"]
+    async def set_fan_speed(self, room, speed): self.units[room]["fan_speed"] = speed
     def operating_mode(self, room): return self.units[room]["mode"]
     def economy(self, room): return self.units[room]["economy"]
     def powerful(self, room): return self.units[room]["powerful"]

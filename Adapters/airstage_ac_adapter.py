@@ -1,4 +1,5 @@
 from typing import Any
+from pyairstage.constants import FanSpeed
 from Ports.ac import ACUnitPort
 from pyairstage.airstageAC import AirstageAC, ApiCloud, BooleanDescriptors
 
@@ -48,6 +49,16 @@ class AirstageACAdapter(ACUnitPort):
 
     async def set_outdoor_low_noise(self, mode: str) -> None:
         await self._impl.set_outdoor_low_noise(mode)
+
+    def get_fan_speed(self) -> str:
+        try:
+            return getattr(self._impl.get_fan_speed(), "value", "UNKNOWN")
+        except (TypeError, ValueError, KeyError):
+            # Missing/unknown cached fan readings must not prevent other settings.
+            return "UNKNOWN"
+
+    async def set_fan_speed(self, speed: FanSpeed) -> None:
+        await self._impl.set_fan_speed(speed)
 
     def get_operating_mode(self) -> str:
         return getattr(self._impl.get_operating_mode(), "value", "UNKNOWN")

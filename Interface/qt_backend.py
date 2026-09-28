@@ -33,6 +33,7 @@ class QtHomeBackend(QObject):
 
     boilerSettingsFinished = Signal(bool, str)
     acSettingsFinished = Signal(str, bool, str)
+    acFanSpeedReceived = Signal(str, str)
     heaterSettingsFinished = Signal(str, bool, str)
     deviceSettingsReceived = Signal(str, str, dict)
     deviceSettingsFailed = Signal(str, str, str)
@@ -338,6 +339,7 @@ class QtHomeBackend(QObject):
         if kind == "ac":
             return dict(target=self._climate.target_temp(room),
                         mode=self._climate.operating_mode(room),
+                        fan_speed=self._climate.fan_speed(room),
                         economy=self._optional_bool(self._climate.economy(room)),
                         powerful=self._optional_bool(self._climate.powerful(room)),
                         quiet=self._optional_bool(self._climate.low_noise(room)))
@@ -393,11 +395,14 @@ class QtHomeBackend(QObject):
         if not math.isfinite(temp) or not minimum <= temp <= maximum:
             raise ValueError("Invalid temperature")
 
-    @asyncSlot(str, float, str, bool, bool, bool)
-    async def apply_ac_settings(self, room, temp, mode, economy, powerful, quiet):
+    @asyncSlot(str, float, str, bool, bool, bool, str)
+    async def apply_ac_settings(self, room, temp, mode, economy, powerful, quiet, fan_speed=""):
         async with self._command_lock("ac", room):
             try:
-                self._validate_temperature(temp, 10, 30)
+                if mode not in {"OFF", "FAN"}:
+                    self._validate_temperature(temp, 10, 30)
+                if fan_speed and fan_speed not in {"QUIET", "LOW", "MEDIUM", "HIGH", "AUTO"}:
+                    raise ValueError("Invalid fan speed")
                 if mode not in {"COOL", "HEAT", "FAN", "DRY", "AUTO", "OFF"}:
                     raise ValueError("Invalid mode")
                 async with asyncio.timeout(45):
@@ -405,7 +410,10 @@ class QtHomeBackend(QObject):
                         await self._climate.turn_off(room)
                     else:
                         await self._climate.set_operating_mode(room, mode)
-                        await self._climate.set_target_temp(room, temp)
+                        if mode != "FAN":
+                            await self._climate.set_target_temp(room, temp)
+                        if fan_speed:
+                            await self._climate.set_fan_speed(room, fan_speed)
                         if self._climate.economy(room) is not None:
                             await self._climate.set_economy(room, "ON" if economy and not powerful else "OFF")
                         if self._climate.powerful(room) is not None:
@@ -414,6 +422,7 @@ class QtHomeBackend(QObject):
                             await self._climate.set_low_noise(room, "ON" if quiet else "OFF")
                         await self._climate.turn_on(room)
                     await self._climate.refresh(room)
+                self.acFanSpeedReceived.emit(room, self._climate.fan_speed(room))
                 await self.publish_dashboard()
             except Exception:
                 self.acSettingsFinished.emit(room, False, "Nie udało się zapisać lub odczytać wszystkich ustawień. Odśwież stan urządzenia.")
