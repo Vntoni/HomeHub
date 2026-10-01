@@ -88,3 +88,30 @@ python run_demo.py
 Close with the window close button or the app's × button.
 
 After setup, you can also double-click `run-demo.command` in Finder.
+
+
+## Raspberry Pi deployment session
+
+The Actions runner runs as a system service, while `bazadomowa` is a user
+service. Both must use the same Linux account (`miggie` in this installation).
+The workflow sets `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` for that
+account before invoking `systemctl --user`, and checks the bus and application
+unit before building or replacing the installed application.
+
+For deployments without an interactive login, run once on the Pi:
+
+```sh
+sudo loginctl enable-linger miggie
+```
+
+Then, in a terminal logged in as `miggie`, verify:
+
+```sh
+systemctl --user status bazadomowa
+```
+
+If the workflow reports that the user bus is unavailable, verify the user manager
+with `systemctl status user@1000.service` (1000 is miggie's UID on this Pi).
+The workflow never ignores errors stopping the application. Deployment jobs are
+serialized, and startup is checked again after ten seconds; this checks process
+availability, not device connectivity or successful display rendering.

@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -49,11 +49,28 @@ jobs:
     name: Build & Deploy on RPi5
     runs-on: self-hosted
     needs: test
+    concurrency:
+      group: raspberrypi5-deploy
+      cancel-in-progress: false
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout latest code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Connect to the application user session
+        shell: bash
+        run: |
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+          if [ ! -S "$XDG_RUNTIME_DIR/bus" ]; then
+            echo "::error::User D-Bus is unavailable. On the Pi, run: sudo loginctl enable-linger $(id -un)"
+            echo "::error::Then log in as the application user and verify: systemctl --user status bazadomowa"
+            exit 1
+          fi
+          systemctl --user cat bazadomowa.service > /dev/null
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" >> "$GITHUB_ENV"
 
       - name: Install Python dependencies
         run: |
@@ -64,7 +81,7 @@ jobs:
           ~/.virtualenvs/Baza_Domowa/bin/python build_app.py
 
       - name: Stop app service before replacing binary
-        run: systemctl --user stop bazadomowa || true
+        run: systemctl --user stop bazadomowa
 
       - name: Replace binary
         run: |
@@ -75,4 +92,9 @@ jobs:
       - name: Start app service
         run: |
           systemctl --user start bazadomowa
+          sleep 10
+          if ! systemctl --user is-active --quiet bazadomowa; then
+            journalctl --user -u bazadomowa -n 60 --no-pager
+            exit 1
+          fi
           systemctl --user status bazadomowa --no-pager
