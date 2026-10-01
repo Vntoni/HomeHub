@@ -1,0 +1,17 @@
+name: Raspberry Pi service diagnostics
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: self-hosted
+    steps:
+      - name: Read HomeHub service status and recent logs
+        shell: bash
+        run: |
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+          systemctl --user show bazadomowa.service --property=ActiveState,SubState,Result,ExecMainCode,ExecMainStatus,ExecStart,WorkingDirectory,StandardOutput,StandardError,FragmentPath
+          systemctl --user status bazadomowa.service --no-pager -l || true
+          journalctl _SYSTEMD_USER_UNIT=bazadomowa.service _UID="$(id -u)" --since '10 minutes ago' -n 80 --no-pager

@@ -94,7 +94,8 @@ jobs:
           systemctl --user start bazadomowa
           sleep 10
           if ! systemctl --user is-active --quiet bazadomowa; then
-            journalctl --user -u bazadomowa -n 60 --no-pager
+            systemctl --user status bazadomowa --no-pager -l || true
+            journalctl _SYSTEMD_USER_UNIT=bazadomowa.service _UID="$(id -u)" --since "5 minutes ago" -n 60 --no-pager
             exit 1
           fi
           systemctl --user status bazadomowa --no-pager
