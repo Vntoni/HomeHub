@@ -80,6 +80,19 @@ jobs:
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python build_app.py
 
+      - name: Preserve application configuration
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.config/bazadomowa"
+          if [ ! -f "$HOME/.config/bazadomowa/.env" ]; then
+            for source in "$HOME/app/BazaDomowa/.env" "$HOME/Baza_Domowa/Config/.env"; do
+              if [ -f "$source" ]; then
+                install -m 600 "$source" "$HOME/.config/bazadomowa/.env"
+                break
+              fi
+            done
+          fi
+
       - name: Stop app service before replacing binary
         run: systemctl --user stop bazadomowa
 
@@ -88,6 +101,18 @@ jobs:
           rm -rf ~/app/BazaDomowa
           cp -r dist/BazaDomowa ~/app/BazaDomowa
           chmod +x ~/app/BazaDomowa/BazaDomowa
+
+      - name: Configure service to run the deployed binary
+        run: |
+          mkdir -p "$HOME/.config/systemd/user/bazadomowa.service.d"
+          cat > "$HOME/.config/systemd/user/bazadomowa.service.d/10-deployment.conf" <<'UNIT'
+          [Service]
+          ExecStart=
+          ExecStart=%h/app/BazaDomowa/BazaDomowa
+          WorkingDirectory=%h/app/BazaDomowa
+          UNIT
+          systemctl --user daemon-reload
+          systemctl --user reset-failed bazadomowa
 
       - name: Start app service
         run: |
