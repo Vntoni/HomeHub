@@ -37,7 +37,7 @@ Rectangle {
                 Label { text: root.deviceName; font.pixelSize: 25; font.bold: true; Layout.fillWidth: true; elide: Text.ElideRight }
                 Label { text: root.deviceKind; color: "#a9b8c6"; font.pixelSize: 14 }
             }
-            Image { source: root.iconSource; Layout.preferredWidth: 40; Layout.preferredHeight: 40; fillMode: Image.PreserveAspectFit }
+            Image { source: root.iconSource; Layout.preferredWidth: 72; Layout.preferredHeight: 72; fillMode: Image.PreserveAspectFit }
         }
         Label { text: "Aktualnie"; color: "#a9b8c6"; font.pixelSize: 14 }
         Label {
