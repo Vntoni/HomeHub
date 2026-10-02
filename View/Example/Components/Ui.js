@@ -2,6 +2,11 @@
 function temperature(value) {
     return isFinite(value) ? Number(value).toLocaleString(Qt.locale("pl_PL"), "f", 1) + "°C" : "—"
 }
+function sensor(value, unit) {
+    return value === null || value === undefined || !isFinite(value)
+        ? "brak danych"
+        : Number(value).toLocaleString(Qt.locale("pl_PL"), "f", 1) + unit
+}
 function mode(value) {
     var labels = {COOL: "Chłodzenie", HEAT: "Ogrzewanie", FAN: "Wentylacja", DRY: "Osuszanie",
         AUTO: "Automatyczny", OFF: "Wyłączony", GREEN: "Eco", IMEMORY: "Pamięć",

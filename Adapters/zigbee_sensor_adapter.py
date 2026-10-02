@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import threading
 import paho.mqtt.client as mqtt
 
@@ -114,18 +115,29 @@ class ZigbeeSensorAdapter:
         """Zwraca ostatnie dane z czujnika"""
         return self._data
 
-    def get_temperature(self) -> float:
+    def get_temperature(self) -> float | None:
         """Zwraca ostatnią temperaturę w °C"""
-        return float(self._data.get("temperature", 0.0))
+        return self._measurement("temperature")
 
-    def get_humidity(self) -> float:
+    def get_humidity(self) -> float | None:
         """Zwraca ostatnią wilgotność w %"""
-        return float(self._data.get("humidity", 0.0))
+        return self._measurement("humidity")
 
-    def get_battery_level(self) -> float:
+    def get_battery_level(self) -> float | None:
         """Zwraca poziom baterii w %"""
-        return float(self._data.get("battery", 0.0))
+        return self._measurement("battery")
 
-    def get_link_quality(self) -> int:
+    def get_link_quality(self) -> int | None:
         """Zwraca jakość sygnału Zigbee (lqi)"""
-        return int(self._data.get("linkquality", 0))
+        value = self._measurement("linkquality")
+        return int(value) if value is not None else None
+
+    def _measurement(self, key: str) -> float | None:
+        """Return None for an absent/invalid measurement; zero is valid."""
+        if key not in self._data or self._data[key] is None:
+            return None
+        try:
+            value = float(self._data[key])
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return value if math.isfinite(value) else None

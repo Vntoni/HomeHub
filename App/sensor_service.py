@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import asyncio
 import logging
 import threading
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,18 @@ class SensorService:
         """
         if not self._repo:
             return
-        temp = float(data.get("temperature", 0.0))
-        hum = float(data.get("humidity", 0.0))
+        if not isinstance(data, dict) or "temperature" not in data or "humidity" not in data:
+            logger.warning("Skipping sensor reading without temperature and humidity")
+            return
+        try:
+            temp = float(data["temperature"])
+            hum = float(data["humidity"])
+        except (TypeError, ValueError, OverflowError):
+            logger.warning("Skipping sensor reading with invalid values")
+            return
+        if not math.isfinite(temp) or not math.isfinite(hum):
+            logger.warning("Skipping sensor reading with non-finite values")
+            return
         ts = datetime.now(tz=timezone.utc)
 
         # Capture the owner loop during construction, never in the MQTT thread.
@@ -110,11 +121,11 @@ class SensorService:
         return self._sensor[room].get_data()
 
 
-    def get_temperature(self, room: str) -> float:
+    def get_temperature(self, room: str) -> float | None:
         """Pobierz aktualna temperaturę"""
         return self._sensor[room].get_temperature()
 
-    def get_humidity(self, room: str) -> float:
+    def get_humidity(self, room: str) -> float | None:
         """Pobierz aktualna wilgotność"""
         return self._sensor[room].get_humidity()
 

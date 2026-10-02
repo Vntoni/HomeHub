@@ -12,11 +12,11 @@ class SensorPort(Protocol):
         """Pobierz status baterii"""
         ...
 
-    def get_temperature(self) -> float:
+    def get_temperature(self) -> float | None:
         """Pobierz aktualną temperaturę"""
         ...
 
-    def get_humidity(self) -> float:
+    def get_humidity(self) -> float | None:
         """Pobierz aktualną wilgotność"""
         ...
 
