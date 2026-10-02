@@ -19,6 +19,7 @@ ApplicationWindow {
     color: "#141d26"
     property bool isReady: false
     property bool refreshing: false
+    property int deviceRefreshIntervalMs: 900000
 
     ACControlPopup { id: acPopup }
     WaterHeaterControlPopup { id: waterHeaterPopup }
@@ -101,10 +102,11 @@ ApplicationWindow {
         }
     }
     Timer {
-        interval: 10000
+        objectName: "deviceRefreshTimer"
+        interval: appWindow.deviceRefreshIntervalMs
         repeat: true
         running: appWindow.isReady && !appWindow.refreshing
-        onTriggered: backend.publish_dashboard()
+        onTriggered: { appWindow.refreshing = true; backend.refresh_connection() }
     }
     Connections {
         target: backend
