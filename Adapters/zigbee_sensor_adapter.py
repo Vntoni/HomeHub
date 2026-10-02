@@ -77,7 +77,7 @@ class ZigbeeSensorAdapter:
 
     def _measurement(self, key: str) -> float | None:
         """Return None for an absent/invalid measurement; zero is valid."""
-        if key not in self._data or self._data[key] is None:
+        if not isinstance(self._data, dict) or key not in self._data or self._data[key] is None:
             return None
         try:
             value = float(self._data[key])
