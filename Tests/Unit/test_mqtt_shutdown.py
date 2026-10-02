@@ -9,7 +9,8 @@ async def test_close_during_connect_does_not_start_network_loop():
     connected, release = threading.Event(), threading.Event()
     adapter = ZigbeeSensorAdapter.__new__(ZigbeeSensorAdapter)
     adapter._name = "fake"
-    adapter._closed = threading.Event()
+    adapter._stop = threading.Event()
+    adapter._online = threading.Event()
     def connect(*args):
         connected.set()
         assert release.wait(2)
@@ -19,7 +20,7 @@ async def test_close_during_connect_does_not_start_network_loop():
     try:
         assert await asyncio.to_thread(connected.wait, 1)
         closing = asyncio.create_task(asyncio.to_thread(adapter.close))
-        assert await asyncio.to_thread(adapter._closed.wait, 1)
+        assert await asyncio.to_thread(adapter._stop.wait, 1)
         release.set()
         await closing
         assert not adapter._thread.is_alive()
