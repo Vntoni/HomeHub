@@ -78,6 +78,7 @@ class QtHomeBackend(QObject):
     deviceSettingsFailed = Signal(str, str, str)
     devicePowerFinished = Signal(str, str, bool, str)
     deviceOperationBusyChanged = Signal(str, str, bool)
+    deviceStaleChanged = Signal(str, str, bool)
 
     # Washer
     washerOnlineChanged = Signal(bool)
@@ -108,6 +109,7 @@ class QtHomeBackend(QObject):
         self._command_timeout = 45
         self._read_timeout = 30
         self._operations = OperationCoordinator(self._operation_busy)
+        self._device_stale = {}
 
     def _operation_key(self, kind, room):
         # Atlantic shares mutable client state and authentication across rooms.
@@ -129,8 +131,22 @@ class QtHomeBackend(QObject):
                 await self._heater.refresh(room)
             else:
                 raise ValueError("Device unavailable")
-        await self._operations.run(self._operation_key(kind, room), read,
-                                   timeout=self._read_timeout, read=(kind, room))
+        try:
+            await self._operations.run(self._operation_key(kind, room), read,
+                                       timeout=self._read_timeout, read=(kind, room))
+        except Exception:
+            self._set_device_stale(kind, room, True)
+            raise
+        else:
+            self._set_device_stale(kind, room, False)
+
+    def _set_device_stale(self, kind, room, stale):
+        key = (kind, room)
+        stale = bool(stale)
+        if self._device_stale.get(key, False) == stale:
+            return
+        self._device_stale[key] = stale
+        self.deviceStaleChanged.emit(kind, room, stale)
 
     async def _reconcile(self, kind, room):
         await self._read_device(kind, room)
@@ -223,6 +239,12 @@ class QtHomeBackend(QObject):
             online = self._climate.online_map()
             self.acSalonOnlineChanged.emit(bool(online.get("Salon")))
             self.acJadalniaOnlineChanged.emit(bool(online.get("Jadalnia")))
+            for room in online:
+                self.deviceStaleChanged.emit("ac", room, self._device_stale.get(("ac", room), False))
+            self.deviceStaleChanged.emit("boiler", "boiler", self._device_stale.get(("boiler", "boiler"), False))
+            if self._heater:
+                for room in self._heater.online_map():
+                    self.deviceStaleChanged.emit("heater", room, self._device_stale.get(("heater", room), False))
             # brak API na online boilera? spróbuj z refresh – błąd emituj False
             self.ready.emit(True)
         except Exception as e:

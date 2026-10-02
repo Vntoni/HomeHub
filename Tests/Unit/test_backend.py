@@ -24,9 +24,20 @@ def backend(qt_app):
 async def test_failed_refresh_reports_boiler_offline(backend):
     backend._boiler.refresh.side_effect = RuntimeError("offline")
     received = []
+    stale = []
     backend.boilerOnlineChanged.connect(received.append)
+    backend.deviceStaleChanged.connect(lambda *args: stale.append(args))
     await backend.init_all()
     assert received == [False]
+    assert ("boiler", "boiler", True) in stale
+
+
+async def test_successful_refresh_clears_boiler_stale_state(backend):
+    backend._device_stale[("boiler", "boiler")] = True
+    stale = []
+    backend.deviceStaleChanged.connect(lambda *args: stale.append(args))
+    await backend.init_all()
+    assert ("boiler", "boiler", False) in stale
 
 
 async def test_settings_are_sequential_and_emit_refreshed_state(backend):
