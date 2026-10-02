@@ -2,6 +2,10 @@ from Ports.sensor import SensorPort
 from typing import Dict
 from datetime import datetime, timezone
 import asyncio
+import logging
+import threading
+
+logger = logging.getLogger(__name__)
 
 
 class SensorService:
@@ -17,6 +21,13 @@ class SensorService:
         """
         self._sensor = sensors
         self._repo = repository
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = None
+        self._pending = set()
+        self._guard = threading.Lock()
+        self._closed = False
 
     def record_reading(self, room: str, data: dict) -> None:
         """
@@ -29,15 +40,46 @@ class SensorService:
         hum = float(data.get("humidity", 0.0))
         ts = datetime.now(tz=timezone.utc)
 
-        # Uruchom zapis jako task w event loop bez blokowania wątku MQTT
-        try:
-            loop = asyncio.get_event_loop()
-            loop.create_task(
-                self._repo.save_sensor_reading(room, temp, hum, ts)
-            )
-        except RuntimeError:
-            # Brak event loop w wątku MQTT – pomijamy zapis (nie crashujemy)
-            pass
+        # Capture the owner loop during construction, never in the MQTT thread.
+        with self._guard:
+            if self._closed or self._loop is None or not self._loop.is_running():
+                logger.error("Sensor persistence is not accepting readings")
+                return
+            coroutine = self._save_reading(room, temp, hum, ts)
+            try:
+                future = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
+            except RuntimeError:
+                coroutine.close()
+                logger.error("Sensor persistence is not accepting readings")
+                return
+            self._pending.add(future)
+        future.add_done_callback(self._write_finished)
+
+    async def _save_reading(self, room, temp, humidity, timestamp):
+        await self._repo.save_sensor_reading(room, temp, humidity, timestamp)
+
+    def _write_finished(self, future):
+        with self._guard:
+            self._pending.discard(future)
+        if future.cancelled():
+            logger.error("Sensor reading write was cancelled")
+        elif future.exception() is not None:
+            # Avoid logging exception text containing DSNs or credentials.
+            logger.error("Failed to persist sensor reading (%s)",
+                         type(future.exception()).__name__)
+
+    async def aclose(self):
+        """Reject new callbacks and give accepted writes up to five seconds."""
+        with self._guard:
+            self._closed = True
+            pending = tuple(self._pending)
+        if pending:
+            writes = asyncio.gather(*(asyncio.wrap_future(f) for f in pending),
+                                    return_exceptions=True)
+            try:
+                await asyncio.wait_for(writes, timeout=5)
+            except TimeoutError:
+                logger.error("Sensor persistence shutdown timed out; pending writes cancelled")
 
 
     def rooms(self):
