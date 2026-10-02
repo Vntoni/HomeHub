@@ -1,5 +1,5 @@
 from PySide6.QtCore import QObject, Signal
-from App.climate_service import ClimateService
+from App.climate_service import ClimateService, confirm_ac_power
 from App.sensor_service import SensorService
 from App.water_heater_service import WaterHeaterService
 from App.washer_service import WasherService
@@ -453,7 +453,7 @@ class QtHomeBackend(QObject):
                 async with asyncio.timeout(45):
                     if kind == "ac":
                         await (self._climate.turn_on(room) if on else self._climate.turn_off(room))
-                        await self._climate.refresh(room)
+                        await confirm_ac_power(self._climate, room, on)
                     elif kind == "boiler":
                         await self._boiler.set_power(on)
                         await self._boiler.refresh()
