@@ -69,7 +69,18 @@ class SensorService:
                          type(future.exception()).__name__)
 
     async def aclose(self):
-        """Reject new callbacks and give accepted writes up to five seconds."""
+        """Stop producers, then give accepted writes up to five seconds."""
+        with self._guard:
+            closed = self._closed
+        if not closed:
+            # MQTT close joins a thread. Keep the owner loop available so final
+            # callbacks can still schedule and finish their repository writes.
+            closers = [asyncio.to_thread(sensor.close) for sensor in self._sensor.values()
+                       if callable(getattr(sensor, "close", None))]
+            results = await asyncio.gather(*closers, return_exceptions=True)
+            for result in results:
+                if isinstance(result, BaseException):
+                    logger.error("Sensor shutdown failed (%s)", type(result).__name__)
         with self._guard:
             self._closed = True
             pending = tuple(self._pending)
