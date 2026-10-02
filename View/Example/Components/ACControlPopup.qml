@@ -8,12 +8,13 @@ SettingsPopup {
     objectName: "acPopup"
     property string room: ""
     property string selectedMode: ""
+    property string loadedMode: ""
     property string selectedFanSpeed: ""
     property string currentFanSpeed: ""
     property bool fanSpeedEdited: false
     heading: room + " · Klimatyzacja"
     subtitle: "Temperatura, tryb pracy i nawiew"
-    canApply: loaded && (selectedMode === "OFF" || selectedMode === "FAN" || isFinite(temperature.value)) && selectedMode !== ""
+    canApply: loaded && loadedMode !== "OFF" && (selectedMode === "OFF" || selectedMode === "FAN" || isFinite(temperature.value)) && selectedMode !== ""
     onOpened: { reset(); backend.load_device_settings("ac", room) }
     onApplyRequested: backend.apply_ac_settings(room, temperature.value, selectedMode, economy.checked, powerful.checked, quiet.checked, fanSpeedEdited ? selectedFanSpeed : "")
     TemperatureStepper { id: temperature; Layout.fillWidth: true; enabled: root.selectedMode !== "OFF" && root.selectedMode !== "FAN" }
@@ -74,6 +75,7 @@ SettingsPopup {
             if (!root.opened || kind !== "ac" || room !== root.room) return
             temperature.value = values.target
             root.selectedMode = values.mode
+            root.loadedMode = values.mode
             root.selectedFanSpeed = values.fan_speed
             root.currentFanSpeed = values.fan_speed
             root.fanSpeedEdited = false

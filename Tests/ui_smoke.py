@@ -121,6 +121,11 @@ async def run():
     assert salon.property("targetTemperature") == 22.5
     screenshot(window, "03-wynik-zapisu")
     await click(window, find(ac, "closeSettings"))
+    # Settings for an already-off AC are read-only. Turning it on remains
+    # available through the dedicated power switch.
+    backend._climate.units["Jadalnia"]["mode"] = "OFF"
+    backend._climate.units["Jadalnia"]["power"] = False
+    await backend.publish_dashboard()
     await click(window, find(salon, "deviceSettings"))
     assert ac.property("selectedFanSpeed") == "QUIET"
     for speed in ["LOW", "MEDIUM", "HIGH", "AUTO"]:
@@ -136,6 +141,8 @@ async def run():
     assert backend._climate.fan_speed("Salon") == "HIGH"
     await click(window, find(ac, "closeSettings"))
     await click(window, find(find(window, "card_Jadalnia"), "deviceSettings"))
+    assert ac.property("loadedMode") == "OFF"
+    assert not find(ac, "applySettings").property("enabled")
     assert ac.property("selectedFanSpeed") == "AUTO"
     await click(window, find(ac, "closeSettings"))
 
