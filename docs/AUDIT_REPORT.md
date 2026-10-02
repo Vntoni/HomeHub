@@ -1,6 +1,6 @@
 # HomeHub — audyt funkcjonalny i stabilności, faza 1
 
-Data audytu: 2026-10-02  
+Data audytu: 2026-10-02
 Audytowana wersja: **`2552c9b51cc77604af3e3e3c861ad3bd11e5009b`** — `Enlarge device icons for the Raspberry Pi touch panel`, commit z 1 października 2026.
 
 Raport dotyczy wyłącznie tego commita. Kod tego commita został pobrany do izolowanej kopii roboczej w `/tmp/homehub-audit-remote`; nie wykonano checkoutu, merge, rebase, push ani wdrożenia na urządzenia.

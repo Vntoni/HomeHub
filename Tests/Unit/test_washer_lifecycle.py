@@ -34,4 +34,3 @@ async def test_disconnect_then_recovery_publishes_fresh_snapshot_and_stops():
     assert first_task.done()
     assert service._task is None
     assert port.aclose.await_count >= 1
-

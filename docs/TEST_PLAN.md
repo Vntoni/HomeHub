@@ -241,6 +241,6 @@ pełny lock wymaga wersji wspieranych na Pi i jest osobnym zadaniem HH-14.
 
 Przed poprawkami potrzebne jest zatwierdzenie listy i tego planu. Dla HH-01
 domyślnie testujemy zasilanie raportowane przez urządzenie, nie pracę sprężarki.
-Projekt UI może zachować ostatni potwierdzony stan z błędem albo pokazać
-nieznany; wybór trzeba uzgodnić przed implementacją. W tej fazie nie zapadła
+Użytkownik zatwierdził zachowanie ostatniego potwierdzonego stanu z widocznym
+błędem po nieudanym potwierdzeniu AC. W tej fazie nie zapadła
 decyzja o zmianie zachowania HH-09 ani harmonogramów ogrzewania.
