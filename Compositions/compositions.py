@@ -1,6 +1,6 @@
 # src/home/composition.py
 import asyncio
-import math
+from Ports.sensor import sensor_measurement
 import ariston
 from pyairstage.airstageAC import AirstageAC, ApiCloud
 from Model.Backend.washer_ble import WasherMachine
@@ -152,21 +152,11 @@ async def build_backend() -> QtHomeBackend:
         _sensor_rooms = [r.strip() for r in s.sensor_rooms.split(",") if r.strip()]
 
         def _make_sensor_update(backend_ref, room, svc_ref):
-            def _value(data, key):
-                value = data.get(key) if isinstance(data, dict) else None
-                if value is None:
-                    return None
-                try:
-                    value = float(value)
-                except (TypeError, ValueError, OverflowError):
-                    return None
-                return value if math.isfinite(value) else None
-
             def _on_update(name, data):
                 # Emit do Qt UI
                 if backend_ref[0]:
-                    backend_ref[0].sensorTempChanged.emit(room, _value(data, "temperature"))
-                    backend_ref[0].sensorHumidityChanged.emit(room, _value(data, "humidity"))
+                    backend_ref[0].sensorTempChanged.emit(room, sensor_measurement(data, "temperature"))
+                    backend_ref[0].sensorHumidityChanged.emit(room, sensor_measurement(data, "humidity"))
                 # Zapis do bazy przez SensorService
                 if svc_ref[0]:
                     svc_ref[0].record_reading(room, data)

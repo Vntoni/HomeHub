@@ -12,10 +12,13 @@ trafiał do `SensorService.record_reading` i mógł zostać zapisany w PostgreSQ
   nieskończonego. Wartość `0` pozostaje poprawnym pomiarem.
 - Persystencja wymaga obu pól temperatury i wilgotności oraz odrzuca tylko brak,
   wartości nieliczbowe i NaN/inf. Nie powstaje wpis z podstawionym zerem.
-- Sygnały Qt używają typu `object`, aby przekazać `None` do warstwy QML.
-  Dodano `Ui.sensor(value, unit)`, które renderuje `brak danych`; istniejący
-  ekran nie ma jeszcze osobnej karty sensorów podłączonej do tych sygnałów,
-  więc jej wizualne użycie pozostaje do rozszerzenia UI.
+- Sygnały Qt używają `QVariant`, aby przekazać liczby i `None` do QML.
+  Pierwsza implementacja `object` powodowała `Cannot assign PySide::PyObjectWrapper
+  to double`; regresję odtworzono na prawdziwym QML i poprawiono.
+- Istniejąca `TemperatureMap.qml` odbiera te sygnały. Używa teraz `Ui.sensor`,
+  pokazuje `brak danych` dla brakującego pomiaru, zachowuje neutralny kolor
+  pokoju i ponownie rysuje mapę po zmianie wilgotności. Poprzednia informacja
+  o braku widoku sensorów była błędna; nie dodano nowego układu interfejsu.
 - Callback kompozycji także nie wykonuje `float(None)` i publikuje `None`.
 
 ## Testy
@@ -26,9 +29,12 @@ testami persystencji MQTT:
 
     ../HomeHub-phase3/.venv/bin/python Tests/run_offline.py --pytest-only Tests/Unit/test_sensor_missing_data.py Tests/Unit/test_sensor_persistence.py
 
-Wynik: **12 passed**. Nie użyto połączenia MQTT, bazy danych ani sprzętu.
-Pełny runner/QML należy uruchomić przed PR; testy QML nie mają obecnie osobnej
-karty sensorów do kliknięcia.
+Po rozszerzeniu normalizacji na wspólną granicę portu: 18 testów HH-10 i 5
+persystencji przechodzi. Pełny runner: **223 passed, 3 failed** (HH-01/02/04
+naprawiane na innych branchach), jedno ostrzeżenie starego SDK AC. Startup
+i ui_smoke: PASS. Regresja prawdziwego QML sprawdza sygnał z wątku, brak danych,
+neutralny kolor, rzeczywiste zero i późniejszy poprawny odczyt obu pokoi.
+Nie użyto połączenia MQTT, bazy danych ani sprzętu.
 
 ## Ryzyko i rollback
 
