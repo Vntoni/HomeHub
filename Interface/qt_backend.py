@@ -52,8 +52,8 @@ class QtHomeBackend(QObject):
     heaterPowerChanged = Signal(str, bool)  # pokój, on/off
 
     # Sensors (czujniki Zigbee)
-    sensorTempChanged = Signal(str, float)      # pokój, temperatura
-    sensorHumidityChanged = Signal(str, float)  # pokój, wilgotność
+    sensorTempChanged = Signal(str, "QVariant")      # pokój, temperatura lub None
+    sensorHumidityChanged = Signal(str, "QVariant")  # pokój, wilgotność lub None
 
     def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
                  washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None):

@@ -1,4 +1,4 @@
-from Ports.sensor import SensorPort
+from Ports.sensor import SensorPort, sensor_measurement
 from typing import Dict
 from datetime import datetime, timezone
 import asyncio
@@ -36,8 +36,11 @@ class SensorService:
         """
         if not self._repo:
             return
-        temp = float(data.get("temperature", 0.0))
-        hum = float(data.get("humidity", 0.0))
+        temp = sensor_measurement(data, "temperature")
+        hum = sensor_measurement(data, "humidity")
+        if temp is None or hum is None:
+            logger.warning("Skipping sensor reading without valid temperature and humidity")
+            return
         ts = datetime.now(tz=timezone.utc)
 
         # Capture the owner loop during construction, never in the MQTT thread.
@@ -90,11 +93,11 @@ class SensorService:
         return self._sensor[room].get_data()
 
 
-    def get_temperature(self, room: str) -> float:
+    def get_temperature(self, room: str) -> float | None:
         """Pobierz aktualna temperaturę"""
         return self._sensor[room].get_temperature()
 
-    def get_humidity(self, room: str) -> float:
+    def get_humidity(self, room: str) -> float | None:
         """Pobierz aktualna wilgotność"""
         return self._sensor[room].get_humidity()
 
