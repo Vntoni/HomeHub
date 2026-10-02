@@ -52,7 +52,8 @@ async def test_timeout_is_propagated_and_next_refresh_recovers():
 
 
 async def test_legacy_async_refresh_contract_is_preserved():
-    implementation = Mock(refresh_parameters=AsyncMock())
+    implementation = Mock(refresh_parameters=AsyncMock(),
+                          get_operating_mode=Mock(return_value=Mock(value="OFF")))
     adapter = AirstageACAdapter("first", Mock(), Mock(return_value=implementation))
     await adapter.refresh()
     implementation.refresh_parameters.assert_awaited_once_with()

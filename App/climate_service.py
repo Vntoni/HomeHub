@@ -1,8 +1,25 @@
 from typing import Dict
+import asyncio
 
 from pyairstage.constants import OperationMode, BooleanProperty, BooleanDescriptors, FanSpeed
 
 from Ports.ac import ACUnitPort
+
+
+async def confirm_ac_power(service, room, on, *, attempts=4, interval=2.0):
+    """Retry readbacks only; never resend a command after an uncertain result."""
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            await service.refresh(room)
+            mode = service.operating_mode(room)
+            if (on and mode in {"AUTO", "COOL", "DRY", "FAN", "HEAT"}) or (not on and mode == "OFF"):
+                return
+        except Exception as exc:
+            last_error = exc
+        if attempt + 1 < attempts:
+            await asyncio.sleep(interval)
+    raise RuntimeError("AC power was not confirmed by a fresh reading") from last_error
 
 class ClimateService:
     def __init__(self, units: Dict[str, ACUnitPort]):
@@ -72,6 +89,5 @@ class ClimateService:
 
     def online_map(self) -> dict:
         return {room: ac.is_online() for room, ac in self._units.items()}
-
 
 

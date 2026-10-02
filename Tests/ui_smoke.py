@@ -55,7 +55,10 @@ def find(parent, name):
 
 
 async def click(window, item):
-    assert item.property("enabled"), item.objectName()
+    # qasync slots may finish after the rendering delay on a loaded CI host.
+    async with asyncio.timeout(3):
+        while not item.property("enabled"):
+            await asyncio.sleep(0.01)
     ancestor = item.parentItem()
     while ancestor:
         if ancestor.inherits("QQuickFlickable"):
@@ -67,6 +70,11 @@ async def click(window, item):
     point = item.mapToScene(QPointF(item.width() / 2, item.height() / 2)).toPoint()
     loop.call_soon(lambda: QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, point))
     await asyncio.sleep(0.25)
+    if item.objectName() == "applySettings":
+        async with asyncio.timeout(3):
+            while any(find(window, name).property("saving")
+                      for name in ("acPopup", "boilerPopup", "heaterPopup")):
+                await asyncio.sleep(0.01)
 
 
 def screenshot(window, name):

@@ -46,7 +46,7 @@ def worker(stage, targets):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--worker", choices=["guard_smoke", "pytest", "demo_smoke", "ui_smoke"])
+    parser.add_argument("--worker", choices=["guard_smoke", "pytest", "demo_smoke", "ui_smoke", "ac_power_smoke"])
     parser.add_argument("--pytest-only", action="store_true")
     parser.add_argument("targets", nargs="*")
     args = parser.parse_args()
@@ -63,7 +63,7 @@ def main():
                    COVERAGE_FILE=str(ROOT / "test-results" / ".coverage"),
                    XDG_CONFIG_HOME=isolated, XDG_CACHE_HOME=isolated,
                    TMPDIR=isolated, PYTHONUNBUFFERED="1")
-        stages = ["guard_smoke", "pytest"] if args.pytest_only else ["guard_smoke", "pytest", "demo_smoke", "ui_smoke"]
+        stages = ["guard_smoke", "pytest"] if args.pytest_only else ["guard_smoke", "pytest", "demo_smoke", "ui_smoke", "ac_power_smoke"]
         for stage in stages:
             command = [sys.executable, str(Path(__file__).resolve()), "--worker", stage]
             if stage == "pytest":
