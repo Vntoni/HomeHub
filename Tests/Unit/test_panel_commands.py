@@ -14,12 +14,12 @@ async def test_ac_apply_orders_commands_and_reports_readback_failure():
     for name in ("set_operating_mode", "set_target_temp", "set_economy", "set_powerful", "set_low_noise", "refresh"):
         async def record(*args, name=name):
             calls.append(name)
-            if name == "refresh":
+            if name == "refresh" and calls.count("refresh") == 2:
                 raise RuntimeError("offline")
         setattr(backend._climate, name, record)
     backend.acSettingsFinished.connect(lambda *args: results.append(args))
     await backend.apply_ac_settings("Salon", 22.5, "HEAT", False, True, False)
-    assert calls == ["set_operating_mode", "set_target_temp", "set_economy", "set_powerful", "set_low_noise", "refresh"]
+    assert calls == ["refresh", "set_operating_mode", "set_target_temp", "set_economy", "set_powerful", "set_low_noise", "refresh"]
     assert results[0][:2] == ("Salon", False)
 
 

@@ -11,6 +11,10 @@ import asyncio
 import math
 
 
+class ACSettingsBlocked(ValueError):
+    """Settings require a confirmed active operating mode."""
+
+
 class QtHomeBackend(QObject):
     # statusy online
     ready = Signal(bool)
@@ -399,11 +403,7 @@ class QtHomeBackend(QObject):
     async def apply_ac_settings(self, room, temp, mode, economy, powerful, quiet, fan_speed=""):
         async with self._command_lock("ac", room):
             try:
-                # Saving advanced settings must never be the implicit way to
-                # power on a unit. The dedicated power switch is the only
-                # operation allowed to turn an AC on.
-                if self._climate.operating_mode(room) == "OFF":
-                    raise ValueError("Cannot save settings while AC is off")
+                self._require_ac_on(room)
                 if mode not in {"OFF", "FAN"}:
                     self._validate_temperature(temp, 10, 30)
                 if fan_speed and fan_speed not in {"QUIET", "LOW", "MEDIUM", "HIGH", "AUTO"}:
@@ -411,6 +411,10 @@ class QtHomeBackend(QObject):
                 if mode not in {"COOL", "HEAT", "FAN", "DRY", "AUTO", "OFF"}:
                     raise ValueError("Invalid mode")
                 async with asyncio.timeout(45):
+                    # Check external changes since the form was opened before
+                    # allowing the first write. A read error also blocks writes.
+                    await self._climate.refresh(room)
+                    self._require_ac_on(room)
                     if mode == "OFF":
                         await self._climate.turn_off(room)
                     else:
@@ -429,16 +433,18 @@ class QtHomeBackend(QObject):
                     await self._climate.refresh(room)
                 self.acFanSpeedReceived.emit(room, self._climate.fan_speed(room))
                 await self.publish_dashboard()
-            except ValueError as exc:
-                if str(exc) == "Cannot save settings while AC is off":
-                    message = "Nie można zapisać ustawień, gdy klimatyzator jest wyłączony. Włącz go przełącznikiem."
-                else:
-                    message = "Nieprawidłowe ustawienia klimatyzatora."
-                self.acSettingsFinished.emit(room, False, message)
+            except ACSettingsBlocked:
+                self.acSettingsFinished.emit(room, False, "Klimatyzator jest wyłączony lub jego stan nie jest potwierdzony. Włącz go przełącznikiem i odśwież odczyt.")
+            except ValueError:
+                self.acSettingsFinished.emit(room, False, "Nieprawidłowe ustawienia klimatyzatora.")
             except Exception:
                 self.acSettingsFinished.emit(room, False, "Nie udało się zapisać lub odczytać wszystkich ustawień. Odśwież stan urządzenia.")
             else:
                 self.acSettingsFinished.emit(room, True, "Wysłano ustawienia i odświeżono odczyt. Chmura może potwierdzić zmianę z opóźnieniem.")
+
+    def _require_ac_on(self, room):
+        if self._climate.operating_mode(room) not in {"COOL", "HEAT", "FAN", "DRY", "AUTO"}:
+            raise ACSettingsBlocked()
 
     @asyncSlot(str, float, str, int)
     async def apply_heater_settings(self, room, temp, mode, duration):

@@ -143,6 +143,14 @@ async def run():
     await click(window, find(find(window, "card_Jadalnia"), "deviceSettings"))
     assert ac.property("loadedMode") == "OFF"
     assert not find(ac, "applySettings").property("enabled")
+    await click(window, find(ac, "acMode_HEAT"))
+    assert not find(ac, "applySettings").property("enabled")
+    assert find(ac, "acSettingsBlockedReason").property("visible")
+    # Fresh state changes update the guard without overwriting the form draft.
+    backend.modeReceived.emit("Jadalnia", "HEAT")
+    assert find(ac, "applySettings").property("enabled")
+    backend.modeReceived.emit("Jadalnia", "OFF")
+    assert not find(ac, "applySettings").property("enabled")
     assert ac.property("selectedFanSpeed") == "AUTO"
     await click(window, find(ac, "closeSettings"))
 
