@@ -185,7 +185,8 @@ async def build_backend() -> QtHomeBackend:
             repository=repo,
             poll_interval_seconds=s.weather_poll_interval_seconds,
         )
-        asyncio.create_task(weather_adapter.start_polling())
+        backend.register_resource(repo)
+        backend.register_task(asyncio.create_task(weather_adapter.start_polling(), name="OpenMeteoAdapter.poll"))
         print(f"✓ Polling pogody Open-Meteo uruchomiony (co {s.weather_poll_interval_seconds}s)")
 
     return backend

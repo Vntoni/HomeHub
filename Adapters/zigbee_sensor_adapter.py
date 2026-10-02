@@ -24,6 +24,7 @@ class ZigbeeSensorAdapter:
         self._topic = f"zigbee2mqtt/{self._name}"
         self._data: dict = {}
         self._on_update = on_update
+        self._closed = threading.Event()
 
         # Klient MQTT
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -35,8 +36,24 @@ class ZigbeeSensorAdapter:
         self._thread.start()
 
     def _run(self):
-        self._client.connect(self.BROKER_ADDRESS, self.BROKER_PORT, self.BROKER_KEEPALIVE)
-        self._client.loop_forever()
+        try:
+            self._client.connect(self.BROKER_ADDRESS, self.BROKER_PORT, self.BROKER_KEEPALIVE)
+            self._client.loop_forever()
+        except Exception as exc:
+            if not self._closed.is_set():
+                print(f"[ZigbeeSensor:{self._name}] MQTT stopped: {exc}")
+
+    def close(self):
+        """Stop the MQTT loop and wait for its private thread."""
+        if self._closed.is_set():
+            return
+        self._closed.set()
+        try:
+            self._client.disconnect()
+        except Exception:
+            pass
+        if self._thread is not threading.current_thread():
+            self._thread.join(timeout=2)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties):
         print(f"[ZigbeeSensor:{self._name}] Connected, subscribing to {self._topic}")
@@ -72,4 +89,3 @@ class ZigbeeSensorAdapter:
     def get_link_quality(self) -> int:
         """Zwraca jakość sygnału Zigbee (lqi)"""
         return int(self._data.get("linkquality", 0))
-

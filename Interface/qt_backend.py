@@ -9,6 +9,7 @@ from qasync import asyncSlot
 from typing import Optional
 import asyncio
 import math
+import inspect
 from functools import wraps
 from inspect import signature
 from App.operations import OperationCoordinator, OperationBusy
@@ -111,6 +112,22 @@ class QtHomeBackend(QObject):
         self._read_timeout = 30
         self._operations = OperationCoordinator(self._operation_busy)
         self._device_stale = {}
+        self._lifecycle_tasks = set()
+        self._lifecycle_resources = []
+        self._shutdown_started = False
+        self.register_resource(sensor)
+
+    def register_task(self, task):
+        """Register a background task owned by the application lifecycle."""
+        self._lifecycle_tasks.add(task)
+        task.add_done_callback(self._lifecycle_tasks.discard)
+        return task
+
+    def register_resource(self, resource):
+        """Register an async/sync-close resource for deterministic shutdown."""
+        if resource is not None and resource not in self._lifecycle_resources:
+            self._lifecycle_resources.append(resource)
+        return resource
 
     def _operation_key(self, kind, room):
         # Atlantic shares mutable client state and authentication across rooms.
@@ -175,11 +192,26 @@ class QtHomeBackend(QObject):
         self.washerLastSeenChanged.emit(st.last_seen or "")
 
     async def shutdown(self):
+        if self._shutdown_started:
+            return
+        self._shutdown_started = True
         try:
             await self._operations.close()
         finally:
             if self._washer:
                 await self._washer.stop()
+            tasks = list(self._lifecycle_tasks)
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            for resource in reversed(self._lifecycle_resources):
+                close = getattr(resource, "close", None)
+                if close:
+                    result = close()
+                    if inspect.isawaitable(result):
+                        await result
 
     # --- init/refresh
     async def init_all(self):
