@@ -8,15 +8,25 @@ SettingsPopup {
     objectName: "acPopup"
     property string room: ""
     property string selectedMode: ""
+    property string loadedMode: ""
+    readonly property bool deviceOn: ["COOL", "HEAT", "FAN", "DRY", "AUTO"].indexOf(loadedMode) >= 0
     property string selectedFanSpeed: ""
     property string currentFanSpeed: ""
     property bool fanSpeedEdited: false
     heading: room + " · Klimatyzacja"
     subtitle: "Temperatura, tryb pracy i nawiew"
-    canApply: loaded && (selectedMode === "OFF" || selectedMode === "FAN" || isFinite(temperature.value)) && selectedMode !== ""
-    onOpened: { reset(); backend.load_device_settings("ac", room) }
+    canApply: loaded && deviceOn && (selectedMode === "OFF" || selectedMode === "FAN" || isFinite(temperature.value)) && selectedMode !== ""
+    onOpened: { reset(); loadedMode = ""; backend.load_device_settings("ac", room) }
     onApplyRequested: backend.apply_ac_settings(room, temperature.value, selectedMode, economy.checked, powerful.checked, quiet.checked, fanSpeedEdited ? selectedFanSpeed : "")
     TemperatureStepper { id: temperature; Layout.fillWidth: true; enabled: root.selectedMode !== "OFF" && root.selectedMode !== "FAN" }
+    Label {
+        objectName: "acSettingsBlockedReason"
+        visible: root.loaded && !root.deviceOn
+        text: "Zapis jest zablokowany. Włącz klimatyzator przełącznikiem i odśwież odczyt."
+        color: "#ffb4ab"
+        Layout.fillWidth: true
+        wrapMode: Text.WordWrap
+    }
     Label { text: "Tryb pracy"; color: "#a9b8c6"; font.pixelSize: 16 }
     GridLayout {
         columns: width >= 440 ? 3 : 2
@@ -74,6 +84,7 @@ SettingsPopup {
             if (!root.opened || kind !== "ac" || room !== root.room) return
             temperature.value = values.target
             root.selectedMode = values.mode
+            root.loadedMode = values.mode
             root.selectedFanSpeed = values.fan_speed
             root.currentFanSpeed = values.fan_speed
             root.fanSpeedEdited = false
@@ -93,6 +104,9 @@ SettingsPopup {
         }
         function onAcSettingsFinished(room, success, message) {
             if (room === root.room) root.finish(success, message)
+        }
+        function onModeReceived(room, mode) {
+            if (root.opened && room === root.room) root.loadedMode = mode
         }
     }
 }

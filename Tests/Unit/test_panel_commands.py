@@ -14,12 +14,12 @@ async def test_ac_apply_orders_commands_and_reports_readback_failure():
     for name in ("set_operating_mode", "set_target_temp", "set_economy", "set_powerful", "set_low_noise", "refresh"):
         async def record(*args, name=name):
             calls.append(name)
-            if name == "refresh":
+            if name == "refresh" and calls.count("refresh") == 2:
                 raise RuntimeError("offline")
         setattr(backend._climate, name, record)
     backend.acSettingsFinished.connect(lambda *args: results.append(args))
     await backend.apply_ac_settings("Salon", 22.5, "HEAT", False, True, False)
-    assert calls == ["set_operating_mode", "set_target_temp", "set_economy", "set_powerful", "set_low_noise", "refresh"]
+    assert calls == ["refresh", "set_operating_mode", "set_target_temp", "set_economy", "set_powerful", "set_low_noise", "refresh"]
     assert results[0][:2] == ("Salon", False)
 
 
@@ -96,6 +96,34 @@ async def test_ac_off_uses_power_command_not_invalid_mode_enum():
     await backend.apply_ac_settings("Salon", 22.0, "OFF", False, False, False)
     backend._climate.set_operating_mode.assert_not_awaited()
     assert backend._climate.operating_mode("Salon") == "OFF"
+
+
+async def test_ac_settings_are_rejected_when_unit_is_already_off():
+    backend = await build_demo_backend()
+    backend._climate.units["Salon"]["mode"] = "OFF"
+    backend._climate.units["Salon"]["power"] = False
+    backend._climate.set_operating_mode = AsyncMock()
+    backend._climate.set_target_temp = AsyncMock()
+    results = []
+    backend.acSettingsFinished.connect(lambda *args: results.append(args))
+
+    await backend.apply_ac_settings("Salon", 22.0, "HEAT", False, False, False)
+
+    backend._climate.set_operating_mode.assert_not_awaited()
+    backend._climate.set_target_temp.assert_not_awaited()
+    assert results[0][0:2] == ("Salon", False)
+    assert "wyłącz" in results[0][2].lower() or "off" in results[0][2].lower()
+
+
+async def test_ac_can_be_turned_off_from_settings_when_it_started_on():
+    backend = await build_demo_backend()
+    results = []
+    backend.acSettingsFinished.connect(lambda *args: results.append(args))
+
+    await backend.apply_ac_settings("Salon", 22.0, "OFF", False, False, False)
+
+    assert backend._climate.operating_mode("Salon") == "OFF"
+    assert results[0][0:2] == ("Salon", True)
 
 
 async def test_ac_settings_normalize_enum_flags_for_qml():
