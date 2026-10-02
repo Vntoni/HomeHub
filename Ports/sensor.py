@@ -1,4 +1,17 @@
 from typing import Protocol
+import math
+
+
+def sensor_measurement(data, key: str) -> float | None:
+    """Normalize an optional finite measurement without inventing a zero."""
+    value = data.get(key) if isinstance(data, dict) else None
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return value if math.isfinite(value) else None
 
 class SensorPort(Protocol):
     """Port dla elektrycznego grzejnika (Cozy Touch)"""

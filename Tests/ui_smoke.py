@@ -11,7 +11,7 @@ import threading
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import QObject, QPointF, Qt, qInstallMessageHandler
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlApplicationEngine, QQmlExpression
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtTest import QTest
@@ -161,6 +161,27 @@ async def run():
     await click(window, find(window, "openMap"))
     temperature_map = find(window, "temperatureMap")
     assert temperature_map.property("opened")
+    def map_value(expression):
+        evaluator = QQmlExpression(engine.rootContext(), temperature_map, expression)
+        result = evaluator.evaluate()
+        assert not evaluator.hasError(), evaluator.error().toString()
+        return result[0] if isinstance(result, tuple) else result
+    await asyncio.to_thread(backend.sensorTempChanged.emit, "salon", None)
+    await asyncio.to_thread(backend.sensorHumidityChanged.emit, "jadalnia", None)
+    await asyncio.sleep(0.05)
+    assert map_value("tempText(tempSalon)") == "brak danych"
+    assert map_value("humText(humJadalnia)") == "brak danych"
+    assert map_value("roomColor(tempSalon)") == "#2a2a2a"
+    backend.sensorTempChanged.emit("salon", 0.0)
+    backend.sensorHumidityChanged.emit("jadalnia", 0.0)
+    await asyncio.sleep(0.05)
+    assert map_value("tempText(tempSalon)") == "0,0°C"
+    assert map_value("humText(humJadalnia)") == "0,0%"
+    backend.sensorTempChanged.emit("salon", 21.5)
+    backend.sensorTempChanged.emit("jadalnia", 20.0)
+    await asyncio.sleep(0.05)
+    assert map_value("tempText(tempSalon)") == "21,5°C"
+    assert map_value("tempText(tempJadalnia)") == "20,0°C"
     await click(window, find(temperature_map, "closeMap"))
 
     await click(window, find(salon, "deviceSettings"))

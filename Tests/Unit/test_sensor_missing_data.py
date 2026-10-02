@@ -4,6 +4,7 @@ import pytest
 
 from Adapters.zigbee_sensor_adapter import ZigbeeSensorAdapter
 from App.sensor_service import SensorService
+from Ports.sensor import sensor_measurement
 
 
 @pytest.fixture
@@ -49,3 +50,14 @@ async def test_missing_values_are_not_written_but_zero_is_written(caplog):
     assert len(writes) == 1
     assert writes[0][1:3] == (0.0, 0.0)
     assert "Skipping sensor reading" in caplog.text
+
+
+@pytest.mark.parametrize("data", [None, [], {}, {"temperature": None},
+    {"temperature": True}, {"temperature": float("inf")}, {"temperature": "bad"}])
+def test_shared_boundary_normalizer_returns_no_data(data):
+    assert sensor_measurement(data, "temperature") is None
+
+
+@pytest.mark.parametrize("value", [0, "0", -5, "21.5"])
+def test_shared_boundary_normalizer_preserves_finite_values(value):
+    assert sensor_measurement({"temperature": value}, "temperature") == float(value)

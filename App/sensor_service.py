@@ -1,10 +1,9 @@
-from Ports.sensor import SensorPort
+from Ports.sensor import SensorPort, sensor_measurement
 from typing import Dict
 from datetime import datetime, timezone
 import asyncio
 import logging
 import threading
-import math
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +36,10 @@ class SensorService:
         """
         if not self._repo:
             return
-        if not isinstance(data, dict) or "temperature" not in data or "humidity" not in data:
-            logger.warning("Skipping sensor reading without temperature and humidity")
-            return
-        try:
-            temp = float(data["temperature"])
-            hum = float(data["humidity"])
-        except (TypeError, ValueError, OverflowError):
-            logger.warning("Skipping sensor reading with invalid values")
-            return
-        if not math.isfinite(temp) or not math.isfinite(hum):
-            logger.warning("Skipping sensor reading with non-finite values")
+        temp = sensor_measurement(data, "temperature")
+        hum = sensor_measurement(data, "humidity")
+        if temp is None or hum is None:
+            logger.warning("Skipping sensor reading without valid temperature and humidity")
             return
         ts = datetime.now(tz=timezone.utc)
 
