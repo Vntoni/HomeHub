@@ -42,6 +42,9 @@ ScrollView {
                         if (kind !== "heater" || room !== card.modelData) return
                         card.busy = false; card.failed = !success; card.message = message
                     }
+                    function onDeviceOperationBusyChanged(kind, room, busy) {
+                        if (kind === "heater" && room === card.modelData) card.transportBusy = busy
+                    }
                 }
             }
         }

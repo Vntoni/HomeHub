@@ -13,6 +13,9 @@ Popup {
     property bool failed: false
     property string message: ""
     property bool canApply: loaded
+    property string operationKind: ""
+    property string operationRoom: "boiler"
+    property bool transportBusy: false
     signal applyRequested()
     parent: Overlay.overlay
     anchors.centerIn: parent
@@ -79,7 +82,7 @@ Popup {
         PanelButton {
             objectName: "applySettings"
             text: root.saving ? "Zapisywanie…" : "Zastosuj"
-            enabled: root.canApply && !root.saving
+            enabled: root.canApply && !root.saving && !root.transportBusy
             Layout.fillWidth: true
             Layout.preferredHeight: 56
             font.pixelSize: 18
@@ -89,4 +92,10 @@ Popup {
     }
     function reset() { loaded = false; failed = false; message = "" }
     function finish(success, text) { saving = false; failed = !success; message = text }
+    Connections {
+        target: backend
+        function onDeviceOperationBusyChanged(kind, room, busy) {
+            if (kind === root.operationKind && room === root.operationRoom) root.transportBusy = busy
+        }
+    }
 }
