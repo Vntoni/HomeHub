@@ -161,13 +161,13 @@ async def build_backend() -> QtHomeBackend:
                     svc_ref[0].record_reading(room, data)
             return _on_update
 
-        _svc_ref = [None]  # forward reference na sensor_svc
-        sensors_dict = {
-            room: ZigbeeSensorAdapter(room, on_update=_make_sensor_update(_backend_ref, room, _svc_ref))
-            for room in _sensor_rooms
-        }
+        # Install the service before adapter constructors start MQTT threads.
+        sensors_dict = {}
         sensor_svc = SensorService(sensors_dict, repository=repo)
-        _svc_ref[0] = sensor_svc
+        _svc_ref = [sensor_svc]
+        for room in _sensor_rooms:
+            sensors_dict[room] = ZigbeeSensorAdapter(
+                room, on_update=_make_sensor_update(_backend_ref, room, _svc_ref))
         print(f"✓ Sensory Zigbee zainicjalizowane: {_sensor_rooms}")
     except Exception as e:
         print(f"Błąd inicjalizacji sensorów Zigbee: {e}")

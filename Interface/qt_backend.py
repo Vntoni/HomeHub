@@ -76,6 +76,8 @@ class QtHomeBackend(QObject):
         self.washerLastSeenChanged.emit(st.last_seen or "")
 
     async def shutdown(self):
+        if self._sensors:
+            await self._sensors.aclose()
         if self._washer:
             await self._washer.stop()
 
