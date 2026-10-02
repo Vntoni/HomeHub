@@ -87,7 +87,8 @@ wykonuje je mimo błędów pytest. Nie ustanawiano wymaganych checków ochrony m
 - Użytkownik zatwierdził zachowanie ostatnich danych z oznaczeniem nieaktualności
   po błędzie bojlera/grzejników (HH-07).
 - Wariant A został zaimplementowany lokalnie w commitach `53fb789`, `f51ab2f`,
-  `0469370` i `36152ea`; nie wykonano merge ani deployu.
+  `0469370` oraz `36152ea`; osobna gałąź AUTO-01 ma commit `037df26`.
+  Nie wykonano merge ani deployu.
 - Wybór wariantu architektury dla HH-07/11/12 i AUTO-01 opisuje
   [REFRESH_LIFECYCLE_PROPOSAL.md](REFRESH_LIFECYCLE_PROPOSAL.md). Wariant A jest
   zatwierdzony przez użytkownika w bieżącej rozmowie; implementacja w kolejnych
