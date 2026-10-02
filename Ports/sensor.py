@@ -8,7 +8,7 @@ class SensorPort(Protocol):
         """Pobierz aktualne dane z czujnika"""
         ...
 
-    def get_battery_level(self) -> float:
+    def get_battery_level(self) -> float | None:
         """Pobierz status baterii"""
         ...
 
@@ -20,6 +20,6 @@ class SensorPort(Protocol):
         """Pobierz aktualną wilgotność"""
         ...
 
-    def get_link_quality(self) -> int:
+    def get_link_quality(self) -> int | None:
         """Pobierz moc sygnału"""
         ...
