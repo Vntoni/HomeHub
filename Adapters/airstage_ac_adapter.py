@@ -1,8 +1,8 @@
 from typing import Any
 from copy import deepcopy
 from inspect import iscoroutinefunction
-from pyairstage.constants import (FanSpeed, BooleanProperty, VerticalSwingPositions,
-    VerticalSwing4PositionsValues, VerticalSwing6PositionsValues, VerticalSwing8PositionsValues)
+from pyairstage import constants as sdk_constants
+from pyairstage.constants import FanSpeed, BooleanProperty, VerticalSwingPositions
 from Ports.ac import ACUnitPort
 from pyairstage.airstageAC import AirstageAC, ApiCloud, BooleanDescriptors, AirstageACError
 
@@ -89,8 +89,9 @@ class AirstageACAdapter(ACUnitPort):
         options = []
         try:
             if self._impl.get_vertical_direction() is not None:
-                positions = {4: VerticalSwing4PositionsValues, 6: VerticalSwing6PositionsValues,
-                             8: VerticalSwing8PositionsValues}.get(self._impl.get_num_vertical_swing_positions())
+                count = self._impl.get_num_vertical_swing_positions()
+                positions = (getattr(sdk_constants, f"VerticalSwing{count}PositionsValues", None)
+                             if count in (4, 6, 8) else None)
                 if positions:
                     options = [position.name for position in positions]
             if self._impl.get_vertical_swing() is not None:
