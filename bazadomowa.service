@@ -22,9 +22,7 @@ ExecStart=/home/miggie/app/BazaDomowa/BazaDomowa
 Environment=DISPLAY=:0
 Environment=QT_QPA_PLATFORM=xcb
 
-Restart=on-failure
-RestartSec=10
+Restart=no
 
 [Install]
 WantedBy=default.target
-

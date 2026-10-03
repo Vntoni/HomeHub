@@ -130,6 +130,7 @@ jobs:
           mkdir -p "$HOME/.config/systemd/user/bazadomowa.service.d"
           cat > "$HOME/.config/systemd/user/bazadomowa.service.d/10-deployment.conf" <<'UNIT'
           [Service]
+          Restart=no
           ExecStart=
           ExecStart=%h/app/BazaDomowa/BazaDomowa
           WorkingDirectory=%h/app/BazaDomowa
