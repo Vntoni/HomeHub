@@ -95,8 +95,6 @@ async def run():
     await backend.init_all()
     await asyncio.sleep(0.4)
     assert window.property("isReady")
-    refresh_timer = find(window, "deviceRefreshTimer")
-    assert refresh_timer.property("interval") == 900000
     screenshot(window, "00-start")
     salon = find(window, "card_Salon")
     # Failure preserves the last displayed boiler values and marks them stale.
