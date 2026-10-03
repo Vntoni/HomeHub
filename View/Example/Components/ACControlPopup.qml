@@ -15,11 +15,18 @@ SettingsPopup {
     property string selectedFanSpeed: ""
     property string currentFanSpeed: ""
     property bool fanSpeedEdited: false
+    property bool airflowEdited: false
+    property string currentAirflow: ""
+    function airflowLabel(value) {
+        return ({HIGHEST: "Najwyżej", HIGHER: "Wyżej", HIGH: "Wysoko",
+            CENTER_HIGH: "Środek — wyżej", CENTER_LOW: "Środek — niżej",
+            LOW: "Nisko", LOWER: "Niżej", LOWEST: "Najniżej", SWING: "Falowanie"})[value] || "Brak danych"
+    }
     heading: room + " · Klimatyzacja"
     subtitle: "Temperatura, tryb pracy i nawiew"
     canApply: loaded && deviceOn && (selectedMode === "OFF" || selectedMode === "FAN" || isFinite(temperature.value)) && selectedMode !== ""
     onOpened: { reset(); loadedMode = ""; backend.load_device_settings("ac", room) }
-    onApplyRequested: backend.apply_ac_settings(room, temperature.value, selectedMode, economy.checked, powerful.checked, quiet.checked, fanSpeedEdited ? selectedFanSpeed : "")
+    onApplyRequested: backend.apply_ac_settings(room, temperature.value, selectedMode, economy.checked, powerful.checked, quiet.checked, fanSpeedEdited ? selectedFanSpeed : "", airflowEdited ? airflow.currentValue : "")
     TemperatureStepper { id: temperature; Layout.fillWidth: true; enabled: root.selectedMode !== "OFF" && root.selectedMode !== "FAN" }
     Label {
         objectName: "acSettingsBlockedReason"
@@ -77,6 +84,23 @@ SettingsPopup {
         Layout.fillWidth: true
         wrapMode: Text.WordWrap
     }
+    Label { text: "Kierunek nawiewu (pionowo)"; color: "#a9b8c6"; Layout.fillWidth: true }
+    ComboBox {
+        id: airflow
+        objectName: "airflowSelector"
+        Layout.fillWidth: true
+        textRole: "label"
+        valueRole: "value"
+        model: []
+        enabled: count > 0 && root.deviceOn && root.selectedMode !== "OFF"
+        onActivated: root.airflowEdited = true
+    }
+    Label {
+        text: airflow.count ? "Odczyt kierunku: " + root.airflowLabel(root.currentAirflow) : "Kierunek nawiewu niedostępny dla tego urządzenia"
+        color: "#a9b8c6"
+        Layout.fillWidth: true
+        wrapMode: Text.WordWrap
+    }
     CheckBox { id: economy; property bool available: false; text: "Tryb ekonomiczny"; Layout.fillWidth: true; enabled: available && !powerful.checked }
     CheckBox { id: powerful; property bool available: false; enabled: available; text: "Zwiększona moc"; Layout.fillWidth: true; onToggled: { if (checked) economy.checked = false } }
     CheckBox { id: quiet; property bool available: false; enabled: available; text: "Cicha jednostka zewnętrzna"; Layout.fillWidth: true }
@@ -90,6 +114,10 @@ SettingsPopup {
             root.selectedFanSpeed = values.fan_speed
             root.currentFanSpeed = values.fan_speed
             root.fanSpeedEdited = false
+            root.currentAirflow = values.airflow || ""
+            airflow.model = (values.airflow_options || []).map(function(value) { return {value: value, label: root.airflowLabel(value)} })
+            airflow.currentIndex = airflow.indexOfValue(root.currentAirflow)
+            root.airflowEdited = false
             economy.available = values.economy !== null
             economy.checked = !!values.economy
             powerful.available = values.powerful !== null
@@ -103,6 +131,9 @@ SettingsPopup {
         }
         function onAcFanSpeedReceived(room, speed) {
             if (root.opened && room === root.room) root.currentFanSpeed = speed
+        }
+        function onAcAirflowReceived(room, value) {
+            if (root.opened && room === root.room) root.currentAirflow = value
         }
         function onAcSettingsFinished(room, success, message) {
             if (room === root.room) root.finish(success, message)

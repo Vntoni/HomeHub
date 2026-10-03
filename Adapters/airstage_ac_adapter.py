@@ -1,9 +1,10 @@
 from typing import Any
 from copy import deepcopy
 from inspect import iscoroutinefunction
-from pyairstage.constants import FanSpeed
+from pyairstage.constants import (FanSpeed, BooleanProperty, VerticalSwingPositions,
+    VerticalSwing4PositionsValues, VerticalSwing6PositionsValues, VerticalSwing8PositionsValues)
 from Ports.ac import ACUnitPort
-from pyairstage.airstageAC import AirstageAC, ApiCloud, BooleanDescriptors
+from pyairstage.airstageAC import AirstageAC, ApiCloud, BooleanDescriptors, AirstageACError
 
 class AirstageACAdapter(ACUnitPort):
     def __init__(self, device_id: str, api_cloud: Any, impl_cls):
@@ -83,6 +84,38 @@ class AirstageACAdapter(ACUnitPort):
 
     async def set_fan_speed(self, speed: FanSpeed) -> None:
         await self._impl.set_fan_speed(speed)
+
+    def get_airflow_options(self) -> list[str]:
+        options = []
+        try:
+            if self._impl.get_vertical_direction() is not None:
+                positions = {4: VerticalSwing4PositionsValues, 6: VerticalSwing6PositionsValues,
+                             8: VerticalSwing8PositionsValues}.get(self._impl.get_num_vertical_swing_positions())
+                if positions:
+                    options = [position.name for position in positions]
+            if self._impl.get_vertical_swing() is not None:
+                options.append("SWING")
+        except (ValueError, TypeError, KeyError, AttributeError, AirstageACError):
+            return []
+        return options
+
+    def get_airflow(self) -> str:
+        try:
+            if self._impl.get_vertical_swing() == BooleanDescriptors.ON:
+                return "SWING"
+            return getattr(self._impl.get_vertical_direction(), "name", "")
+        except (ValueError, TypeError, KeyError, AttributeError, AirstageACError):
+            return ""
+
+    async def set_airflow(self, value: str) -> None:
+        if value not in self.get_airflow_options():
+            raise ValueError("Unsupported airflow position")
+        if value == "SWING":
+            await self._impl.set_vertical_swing(BooleanProperty.ON)
+        else:
+            if self._impl.get_vertical_swing() is not None:
+                await self._impl.set_vertical_swing(BooleanProperty.OFF)
+            await self._impl.set_vertical_direction(VerticalSwingPositions[value])
 
     def get_operating_mode(self) -> str:
         if self._confirmed_mode is None:

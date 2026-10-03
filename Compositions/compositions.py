@@ -1,7 +1,7 @@
 # src/home/composition.py
 import asyncio
 import aiohttp
-from Ports.sensor import sensor_measurement
+from Ports.sensor import sensor_measurement, configured_sensor_rooms
 import ariston
 from pyairstage.airstageAC import AirstageAC, ApiCloud
 from Model.Backend.washer_ble import WasherMachine
@@ -160,7 +160,7 @@ async def _build_backend(resources) -> QtHomeBackend:
         _backend_ref = [None]  # będzie wypełnione po utworzeniu backend
 
         # Lista pokoi z .env (SENSOR_ROOMS=salon,jadalnia)
-        _sensor_rooms = [r.strip() for r in s.sensor_rooms.split(",") if r.strip()]
+        _sensor_rooms = configured_sensor_rooms(s.sensor_rooms)
 
         def _make_sensor_update(backend_ref, room, svc_ref):
             def _on_update(name, data):

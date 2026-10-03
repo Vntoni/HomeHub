@@ -16,6 +16,9 @@ class DemoClimate:
     def temp_indoor(self, room): return self.units[room]["current"]
     def target_temp(self, room): return self.units[room]["target"]
     def fan_speed(self, room): return self.units[room]["fan_speed"]
+    def airflow_options(self, room): return ["HIGHEST", "HIGH", "LOW", "LOWEST", "SWING"]
+    def airflow(self, room): return self.units[room].get("airflow", "HIGH")
+    async def set_airflow(self, room, value): self.units[room]["airflow"] = value
     async def set_fan_speed(self, room, speed): self.units[room]["fan_speed"] = speed
     def operating_mode(self, room): return self.units[room]["mode"]
     def economy(self, room): return self.units[room]["economy"]

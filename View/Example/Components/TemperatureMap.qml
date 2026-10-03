@@ -132,6 +132,7 @@ Popup {
             onTempPrzedpokojChanged: requestPaint()
             onTempWCChanged:         requestPaint()
             onHumJadalniaChanged:    requestPaint()
+            onHumWCChanged:          requestPaint()
 
             // Przekazanie property z parenta do canvas (Canvas nie dziedziczy)
             property real tempSalon:     tempMapPopup.tempSalon
@@ -140,6 +141,7 @@ Popup {
             property real tempWC:        tempMapPopup.tempWC
             property real humSalon:      NaN
             property real humJadalnia:   tempMapPopup.humJadalnia
+            property real humWC:         tempMapPopup.humWC
 
             onPaint: {
                 var ctx = getContext("2d")
@@ -230,7 +232,7 @@ Popup {
                 drawLabel("Suszarnia",  NaN, undefined,
                           przedW + suszW / 2, topH / 2)
 
-                drawLabel("WC",         tempWC, undefined,
+                drawLabel("WC",         tempWC, humWC,
                           przedW + suszW + wcW / 2, topH / 2)
 
                 drawLabel("Salon",      tempSalon, undefined,

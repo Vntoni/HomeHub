@@ -77,6 +77,15 @@ class ClimateService:
     def fan_speed(self, room: str) -> str:
         return self._get(room).get_fan_speed()
 
+    def airflow_options(self, room: str) -> list[str]:
+        return self._get(room).get_airflow_options()
+
+    def airflow(self, room: str) -> str:
+        return self._get(room).get_airflow()
+
+    async def set_airflow(self, room: str, value: str) -> None:
+        await self._get(room).set_airflow(value)
+
     async def set_fan_speed(self, room: str, speed: str) -> None:
         await self._get(room).set_fan_speed(FanSpeed[speed])
 
@@ -89,5 +98,4 @@ class ClimateService:
 
     def online_map(self) -> dict:
         return {room: ac.is_online() for room, ac in self._units.items()}
-
 
