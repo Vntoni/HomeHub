@@ -1,0 +1,17 @@
+# Direct dependencies verified in the offline test environment, 2026-10-03.
+# For test/CI only. This is not a production Raspberry Pi lockfile.
+PySide6==6.8.3
+qasync==0.28.0
+pyairstage==3.2.2
+ariston==0.19.9
+requests==2.34.2
+python-dotenv==1.2.4
+cozypy==1.2.7
+asyncpg==0.31.0
+httpx==0.28.1
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+pyinstaller==6.22.3
+paho-mqtt==2.1.0
+bleak==3.0.2
