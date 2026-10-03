@@ -99,6 +99,11 @@ jobs:
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python -c 'from Adapters.airstage_ac_adapter import AirstageACAdapter; from importlib.metadata import version; print("AC adapter import OK; pyairstage=" + version("pyairstage"))'
 
+      - name: Test shutdown offline with Pi Qt and qasync
+        # Trusted main only; fake devices, offscreen Qt, live app still running.
+        run: |
+          ~/.virtualenvs/Baza_Domowa/bin/python Tests/run_offline.py --smoke-only shutdown_smoke window_close_smoke qml_quit_smoke shutdown_error_smoke qml_failure_smoke
+
       - name: Build with PyInstaller
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python build_app.py

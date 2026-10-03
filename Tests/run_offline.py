@@ -13,6 +13,9 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+SMOKE_STAGES = ["demo_smoke", "ui_smoke", "ac_power_smoke", "shutdown_smoke",
+                "qml_failure_smoke", "window_close_smoke", "qml_quit_smoke",
+                "shutdown_error_smoke"]
 
 
 def worker(stage, targets):
@@ -46,10 +49,10 @@ def worker(stage, targets):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--worker", choices=["guard_smoke", "pytest", "demo_smoke", "ui_smoke", "ac_power_smoke", "shutdown_smoke", "qml_failure_smoke"])
+    parser.add_argument("--worker", choices=["guard_smoke", "pytest", *SMOKE_STAGES])
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--pytest-only", action="store_true")
-    selection.add_argument("--smoke-only", nargs="+", choices=["demo_smoke", "ui_smoke", "ac_power_smoke", "shutdown_smoke", "qml_failure_smoke"])
+    selection.add_argument("--smoke-only", nargs="+", choices=SMOKE_STAGES)
     parser.add_argument("targets", nargs="*")
     args = parser.parse_args()
     if args.worker:
@@ -65,7 +68,7 @@ def main():
                    COVERAGE_FILE=str(ROOT / "test-results" / ".coverage"),
                    XDG_CONFIG_HOME=isolated, XDG_CACHE_HOME=isolated,
                    TMPDIR=isolated, PYTHONUNBUFFERED="1")
-        stages = ["guard_smoke", "pytest"] if args.pytest_only else ["guard_smoke", "pytest", "demo_smoke", "ui_smoke", "ac_power_smoke", "shutdown_smoke", "qml_failure_smoke"]
+        stages = ["guard_smoke", "pytest"] if args.pytest_only else ["guard_smoke", "pytest", *SMOKE_STAGES]
         if args.smoke_only:
             stages = ["guard_smoke", *args.smoke_only]
         for stage in stages:
