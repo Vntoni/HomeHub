@@ -116,6 +116,7 @@ class QtHomeBackend(QObject):
         self._lifecycle_resources = []
         self._shutdown_started = False
         self._shutdown_task = None
+        self._refresh_task = None
 
     def register_task(self, task):
         """Register a background task owned by the application lifecycle."""
@@ -317,7 +318,11 @@ class QtHomeBackend(QObject):
 
     @asyncSlot()
     async def refresh_connection(self):
-        await self.init_all()
+        if self._shutdown_started:
+            return
+        if self._refresh_task is None or self._refresh_task.done():
+            self._refresh_task = self.register_task(asyncio.create_task(self.init_all()))
+        await asyncio.shield(self._refresh_task)
 
     # --- AC
     @asyncSlot(str)

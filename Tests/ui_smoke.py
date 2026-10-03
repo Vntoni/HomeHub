@@ -95,6 +95,50 @@ async def run():
     await backend.init_all()
     await asyncio.sleep(0.4)
     assert window.property("isReady")
+    refresh_timer = find(window, "deviceRefreshTimer")
+    assert refresh_timer.property("interval") == 900000
+    # Exercise the actual timer with a shortened test interval. A slow cloud
+    # read and a simultaneous manual refresh must share one cycle, without writes.
+    entered, release = asyncio.Event(), asyncio.Event()
+    reads, writes = [], []
+    original_read = backend._climate.refresh
+    async def slow_read(room):
+        reads.append(room)
+        if room == "Salon":
+            entered.set()
+            await release.wait()
+        backend._climate.units[room]["current"] = 21.75
+    saved_writes = []
+    for service in (backend._climate, backend._boiler, backend._heater):
+        for name in dir(service):
+            if name.startswith(("set_", "turn_on", "turn_off")):
+                original_method = getattr(service, name)
+                saved_writes.append((service, name, original_method))
+                async def forbidden_write(*args, name=name):
+                    writes.append(name)
+                    raise AssertionError("Refresh sent a command")
+                setattr(service, name, forbidden_write)
+    backend._climate.refresh = slow_read
+    try:
+        window.setProperty("deviceRefreshIntervalMs", 40)
+        await asyncio.wait_for(entered.wait(), 2)
+        manual = backend.refresh_connection()
+        await asyncio.sleep(.15)
+        assert reads == ["Salon"]
+        window.setProperty("deviceRefreshIntervalMs", 900000)
+        release.set()
+        await asyncio.wait_for(manual, 2)
+        await asyncio.sleep(.05)
+        assert reads == ["Salon", "Jadalnia"]
+        assert not window.property("refreshing")
+        assert find(window, "card_Salon").property("currentTemperature") == 21.75
+        assert writes == []
+    finally:
+        release.set()
+        window.setProperty("deviceRefreshIntervalMs", 900000)
+        backend._climate.refresh = original_read
+        for service, name, original_method in saved_writes:
+            setattr(service, name, original_method)
     screenshot(window, "00-start")
     salon = find(window, "card_Salon")
     # Failure preserves the last displayed boiler values and marks them stale.
