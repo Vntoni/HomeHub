@@ -48,9 +48,15 @@ ScrollView {
                     function onAcSalonOnlineChanged(value) { if (card.modelData === "Salon") card.online = value }
                     function onAcJadalniaOnlineChanged(value) { if (card.modelData === "Jadalnia") card.online = value }
                     function onBoilerOnlineChanged(value) { if (card.isBoiler) card.online = value }
+                    function onDeviceStaleChanged(kind, room, stale) {
+                        if (room === card.modelData && kind === (card.isBoiler ? "boiler" : "ac")) card.stale = stale
+                    }
                     function onDevicePowerFinished(kind, room, success, message) {
                         if (room !== card.modelData || kind !== (card.isBoiler ? "boiler" : "ac")) return
                         card.busy = false; card.failed = !success; card.message = message
+                    }
+                    function onDeviceOperationBusyChanged(kind, room, busy) {
+                        if (room === card.modelData && kind === (card.isBoiler ? "boiler" : "ac")) card.transportBusy = busy
                     }
                 }
             }

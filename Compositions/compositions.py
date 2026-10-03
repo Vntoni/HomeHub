@@ -1,5 +1,7 @@
 # src/home/composition.py
 import asyncio
+import aiohttp
+from Ports.sensor import sensor_measurement
 import ariston
 from pyairstage.airstageAC import AirstageAC, ApiCloud
 from Model.Backend.washer_ble import WasherMachine
@@ -13,14 +15,22 @@ from App.climate_service import ClimateService
 from App.water_heater_service import WaterHeaterService
 from App.washer_service import WasherService
 from Interface.qt_backend import QtHomeBackend
+from App.operations import run_blocking
+from App.lifecycle import build_with_resources
 
 async def build_backend() -> QtHomeBackend:
+    # Resources belong to this scope before the first operation that can fail.
+    return await build_with_resources(_build_backend)
+
+
+async def _build_backend(resources) -> QtHomeBackend:
     s = get_settings()
 
     # --- Baza danych PostgreSQL ---
     repo = None
     try:
         repo = PostgresRepositoryAdapter(dsn=s.db_dsn)
+        resources.push_async_callback(repo.close)
         await repo.connect()
         print("✓ Baza danych PostgreSQL połączona")
     except Exception as e:
@@ -29,7 +39,9 @@ async def build_backend() -> QtHomeBackend:
 
     # --- Airstage (klima) ---
     try:
-        api = ApiCloud(username=s.user, password=s.pwd, country=s.airstage_country)
+        session = await resources.enter_async_context(aiohttp.ClientSession())
+        api = ApiCloud(username=s.user, password=s.pwd, country=s.airstage_country,
+                       session=session)
         await api.authenticate()
     except Exception as e:
         raise RuntimeError("Airstage API could not be initialized.")
@@ -79,13 +91,13 @@ async def build_backend() -> QtHomeBackend:
 
             # Logowanie
             print("Logowanie do Atlantic API...")
-            if not atlantic_client.login():
+            if not await run_blocking(atlantic_client.login):
                 raise RuntimeError("Failed to login to Atlantic API")
             print("✓ Zalogowano pomyślnie")
 
             # Pobierz urządzenia
             print("Pobieranie urządzeń...")
-            devices = atlantic_client.get_devices()
+            devices = await run_blocking(atlantic_client.get_devices)
             print(f"✓ Znaleziono {len(devices)} urządzeń")
 
             if not devices:
@@ -154,20 +166,21 @@ async def build_backend() -> QtHomeBackend:
             def _on_update(name, data):
                 # Emit do Qt UI
                 if backend_ref[0]:
-                    backend_ref[0].sensorTempChanged.emit(room, float(data.get("temperature", 0.0)))
-                    backend_ref[0].sensorHumidityChanged.emit(room, float(data.get("humidity", 0.0)))
+                    backend_ref[0].sensorTempChanged.emit(room, sensor_measurement(data, "temperature"))
+                    backend_ref[0].sensorHumidityChanged.emit(room, sensor_measurement(data, "humidity"))
                 # Zapis do bazy przez SensorService
                 if svc_ref[0]:
                     svc_ref[0].record_reading(room, data)
             return _on_update
 
-        _svc_ref = [None]  # forward reference na sensor_svc
-        sensors_dict = {
-            room: ZigbeeSensorAdapter(room, on_update=_make_sensor_update(_backend_ref, room, _svc_ref))
-            for room in _sensor_rooms
-        }
+        # Install the service before adapter constructors start MQTT threads.
+        sensors_dict = {}
         sensor_svc = SensorService(sensors_dict, repository=repo)
-        _svc_ref[0] = sensor_svc
+        _svc_ref = [sensor_svc]
+        for room in _sensor_rooms:
+            sensors_dict[room] = ZigbeeSensorAdapter(
+                room, on_update=_make_sensor_update(_backend_ref, room, _svc_ref))
+            resources.push_async_callback(run_blocking, sensors_dict[room].close)
         print(f"✓ Sensory Zigbee zainicjalizowane: {_sensor_rooms}")
     except Exception as e:
         print(f"Błąd inicjalizacji sensorów Zigbee: {e}")
@@ -185,7 +198,7 @@ async def build_backend() -> QtHomeBackend:
             repository=repo,
             poll_interval_seconds=s.weather_poll_interval_seconds,
         )
-        asyncio.create_task(weather_adapter.start_polling())
+        backend.register_task(asyncio.create_task(weather_adapter.start_polling(), name="OpenMeteoAdapter.poll"))
         print(f"✓ Polling pogody Open-Meteo uruchomiony (co {s.weather_poll_interval_seconds}s)")
 
     return backend

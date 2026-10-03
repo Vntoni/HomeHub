@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Effects
+import "Ui.js" as Ui
 
 // Popup z mapą temperatury – rzut parteru z lotu ptaka
 Popup {
@@ -34,12 +35,14 @@ Popup {
         target: backend
 
         function onSensorTempChanged(room, temp) {
+            temp = temp === null || temp === undefined || !isFinite(temp) ? NaN : Number(temp)
             if (room === "salon") tempMapPopup.tempSalon = temp
             if (room === "lazienka")    tempMapPopup.tempWC    = temp
             if (room === "jadalnia") tempMapPopup.tempJadalnia = temp
         }
 
         function onSensorHumidityChanged(room, hum) {
+            hum = hum === null || hum === undefined || !isFinite(hum) ? NaN : Number(hum)
             if (room === "lazienka")    tempMapPopup.humWC    = hum
             if (room === "jadalnia") tempMapPopup.humJadalnia = hum
         }
@@ -75,11 +78,11 @@ Popup {
     }
 
     function tempText(temp) {
-        return isNaN(temp) ? "—" : temp.toFixed(1) + "°C"
+        return Ui.sensor(temp, "°C")
     }
 
     function humText(hum) {
-        return isNaN(hum) ? "" : hum.toFixed(0) + "%"
+        return Ui.sensor(hum, "%")
     }
 
     // ── Zawartość ────────────────────────────────────────────────────────
@@ -128,6 +131,7 @@ Popup {
             onTempJadalniaChanged:   requestPaint()
             onTempPrzedpokojChanged: requestPaint()
             onTempWCChanged:         requestPaint()
+            onHumJadalniaChanged:    requestPaint()
 
             // Przekazanie property z parenta do canvas (Canvas nie dziedziczy)
             property real tempSalon:     tempMapPopup.tempSalon
@@ -213,23 +217,23 @@ Popup {
                     ctx.fillText(tempMapPopup.tempText(temp), cx, cy + 4)
 
                     // Wilgotność – mała, szaroniebieska
-                    if (!isNaN(hum)) {
+                    if (hum !== undefined) {
                         ctx.font = "12px sans-serif"
                         ctx.fillStyle = "#78b0d0"
                         ctx.fillText("💧 " + tempMapPopup.humText(hum), cx, cy + 24)
                     }
                 }
 
-                drawLabel("Przedpokój", tempPrzedpokoj, NaN,
+                drawLabel("Przedpokój", tempPrzedpokoj, undefined,
                           przedW / 2,       topH / 2)
 
-                drawLabel("Suszarnia",  NaN, NaN,
+                drawLabel("Suszarnia",  NaN, undefined,
                           przedW + suszW / 2, topH / 2)
 
-                drawLabel("WC",         tempWC, NaN,
+                drawLabel("WC",         tempWC, undefined,
                           przedW + suszW + wcW / 2, topH / 2)
 
-                drawLabel("Salon",      tempSalon, humSalon,
+                drawLabel("Salon",      tempSalon, undefined,
                           salonW / 2,     botY + botH / 2)
 
                 drawLabel("Jadalnia /\nKuchnia", tempJadalnia, humJadalnia,
@@ -280,4 +284,3 @@ Popup {
         }
     }
 }
-

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtCore import qInstallMessageHandler
+from PySide6.QtCore import qInstallMessageHandler, QTimer
 from PySide6.QtQuickControls2 import QQuickStyle
 from qasync import QEventLoop, asyncSlot
 
@@ -47,20 +47,28 @@ def main(demo=False):
     with loop:
         backend = loop.run_until_complete(build_backend())
 
-        engine = QQmlApplicationEngine()
-        engine.rootContext().setContextProperty("backend", backend)
-        engine.rootContext().setContextProperty("demoMode", demo)
-        engine.quit.connect(app.quit)
-        engine.addImportPath(qml_import_path)
-        engine.loadFromModule("Example", "main")
-
-        if not engine.rootObjects():
-            sys.exit(-1)
-
-        loop.create_task(backend.init_all())
+        previous_sigterm = signal.getsignal(signal.SIGTERM)
+        signal.signal(signal.SIGTERM, lambda *_: app.quit())
+        # Give Python regular execution time while Qt is idle to handle SIGTERM.
+        signal_timer = QTimer()
+        signal_timer.timeout.connect(lambda: None)
+        signal_timer.start(250)
         try:
+            engine = QQmlApplicationEngine()
+            engine.rootContext().setContextProperty("backend", backend)
+            engine.rootContext().setContextProperty("demoMode", demo)
+            engine.quit.connect(app.quit)
+            engine.addImportPath(qml_import_path)
+            engine.loadFromModule("Example", "main")
+
+            if not engine.rootObjects():
+                raise RuntimeError("QML application failed to load")
+
+            backend.register_task(loop.create_task(backend.init_all()))
             loop.run_forever()
         finally:
+            signal_timer.stop()
+            signal.signal(signal.SIGTERM, previous_sigterm)
             loop.run_until_complete(backend.shutdown())
 
 if __name__ == "__main__":

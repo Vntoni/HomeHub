@@ -88,6 +88,10 @@ analyze_*.py
 
 .venv-demo/
 
+# Offline test reports (no credentials or production data)
+test-results/
+!Tests/check_integrity.py
+
 .venv-demo/
 .venv-test/
 !Tests/**/test_*.py

@@ -6,16 +6,18 @@ import asyncio
 from pathlib import Path
 import socket
 import sys
+import threading
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import QObject, QPointF, Qt, qInstallMessageHandler
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlApplicationEngine, QQmlExpression
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtTest import QTest
 from qasync import QEventLoop
 from Compositions.demo import build_demo_backend
+from App.operations import run_blocking
 import View.images.images  # noqa: F401
 
 
@@ -55,7 +57,10 @@ def find(parent, name):
 
 
 async def click(window, item):
-    assert item.property("enabled"), item.objectName()
+    # qasync slots may finish after the rendering delay on a loaded CI host.
+    async with asyncio.timeout(3):
+        while not item.property("enabled"):
+            await asyncio.sleep(0.01)
     ancestor = item.parentItem()
     while ancestor:
         if ancestor.inherits("QQuickFlickable"):
@@ -67,6 +72,11 @@ async def click(window, item):
     point = item.mapToScene(QPointF(item.width() / 2, item.height() / 2)).toPoint()
     loop.call_soon(lambda: QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, point))
     await asyncio.sleep(0.25)
+    if item.objectName() == "applySettings":
+        async with asyncio.timeout(3):
+            while any(find(window, name).property("saving")
+                      for name in ("acPopup", "boilerPopup", "heaterPopup")):
+                await asyncio.sleep(0.01)
 
 
 def screenshot(window, name):
@@ -85,13 +95,93 @@ async def run():
     await backend.init_all()
     await asyncio.sleep(0.4)
     assert window.property("isReady")
+    refresh_timer = find(window, "deviceRefreshTimer")
+    assert refresh_timer.property("interval") == 900000
+    # Exercise the actual timer with a shortened test interval. A slow cloud
+    # read and a simultaneous manual refresh must share one cycle, without writes.
+    entered, release = asyncio.Event(), asyncio.Event()
+    reads, writes = [], []
+    original_read = backend._climate.refresh
+    async def slow_read(room):
+        reads.append(room)
+        if room == "Salon":
+            entered.set()
+            await release.wait()
+        backend._climate.units[room]["current"] = 21.75
+    saved_writes = []
+    for service in (backend._climate, backend._boiler, backend._heater):
+        for name in dir(service):
+            if name.startswith(("set_", "turn_on", "turn_off")):
+                original_method = getattr(service, name)
+                saved_writes.append((service, name, original_method))
+                async def forbidden_write(*args, name=name):
+                    writes.append(name)
+                    raise AssertionError("Refresh sent a command")
+                setattr(service, name, forbidden_write)
+    backend._climate.refresh = slow_read
+    try:
+        window.setProperty("deviceRefreshIntervalMs", 40)
+        await asyncio.wait_for(entered.wait(), 2)
+        manual = backend.refresh_connection()
+        await asyncio.sleep(.15)
+        assert reads == ["Salon"]
+        window.setProperty("deviceRefreshIntervalMs", 900000)
+        release.set()
+        await asyncio.wait_for(manual, 2)
+        await asyncio.sleep(.05)
+        assert reads == ["Salon", "Jadalnia"]
+        assert not window.property("refreshing")
+        assert find(window, "card_Salon").property("currentTemperature") == 21.75
+        assert writes == []
+    finally:
+        release.set()
+        window.setProperty("deviceRefreshIntervalMs", 900000)
+        backend._climate.refresh = original_read
+        for service, name, original_method in saved_writes:
+            setattr(service, name, original_method)
     screenshot(window, "00-start")
     salon = find(window, "card_Salon")
+    # Failure preserves the last displayed boiler values and marks them stale.
+    boiler_card = find(window, "card_boiler")
+    before = boiler_card.property("currentTemperature")
+    original_refresh = backend._boiler.refresh
+    async def failed_refresh():
+        raise ConnectionError("offline test")
+    backend._boiler.refresh = failed_refresh
+    await backend.refresh_connection()
+    await asyncio.sleep(.05)
+    assert boiler_card.property("stale")
+    assert boiler_card.property("currentTemperature") == before
+    backend._boiler.refresh = original_refresh
+    await backend.refresh_connection()
+    await asyncio.sleep(.05)
+    assert not boiler_card.property("stale")
     assert salon.property("targetTemperature") == 22.0
     screenshot(window, "01-parter")
     await click(window, find(window, "openMap"))
     temperature_map = find(window, "temperatureMap")
     assert temperature_map.property("opened")
+    def map_value(expression):
+        evaluator = QQmlExpression(engine.rootContext(), temperature_map, expression)
+        result = evaluator.evaluate()
+        assert not evaluator.hasError(), evaluator.error().toString()
+        return result[0] if isinstance(result, tuple) else result
+    await asyncio.to_thread(backend.sensorTempChanged.emit, "salon", None)
+    await asyncio.to_thread(backend.sensorHumidityChanged.emit, "jadalnia", None)
+    await asyncio.sleep(0.05)
+    assert map_value("tempText(tempSalon)") == "brak danych"
+    assert map_value("humText(humJadalnia)") == "brak danych"
+    assert map_value("roomColor(tempSalon)") == "#2a2a2a"
+    backend.sensorTempChanged.emit("salon", 0.0)
+    backend.sensorHumidityChanged.emit("jadalnia", 0.0)
+    await asyncio.sleep(0.05)
+    assert map_value("tempText(tempSalon)") == "0,0°C"
+    assert map_value("humText(humJadalnia)") == "0,0%"
+    backend.sensorTempChanged.emit("salon", 21.5)
+    backend.sensorTempChanged.emit("jadalnia", 20.0)
+    await asyncio.sleep(0.05)
+    assert map_value("tempText(tempSalon)") == "21,5°C"
+    assert map_value("tempText(tempJadalnia)") == "20,0°C"
     await click(window, find(temperature_map, "closeMap"))
 
     await click(window, find(salon, "deviceSettings"))
@@ -113,6 +203,11 @@ async def run():
     assert salon.property("targetTemperature") == 22.5
     screenshot(window, "03-wynik-zapisu")
     await click(window, find(ac, "closeSettings"))
+    # Settings for an already-off AC are read-only. Turning it on remains
+    # available through the dedicated power switch.
+    backend._climate.units["Jadalnia"]["mode"] = "OFF"
+    backend._climate.units["Jadalnia"]["power"] = False
+    await backend.publish_dashboard()
     await click(window, find(salon, "deviceSettings"))
     assert ac.property("selectedFanSpeed") == "QUIET"
     for speed in ["LOW", "MEDIUM", "HIGH", "AUTO"]:
@@ -128,6 +223,16 @@ async def run():
     assert backend._climate.fan_speed("Salon") == "HIGH"
     await click(window, find(ac, "closeSettings"))
     await click(window, find(find(window, "card_Jadalnia"), "deviceSettings"))
+    assert ac.property("loadedMode") == "OFF"
+    assert not find(ac, "applySettings").property("enabled")
+    await click(window, find(ac, "acMode_HEAT"))
+    assert not find(ac, "applySettings").property("enabled")
+    assert find(ac, "acSettingsBlockedReason").property("visible")
+    # Fresh state changes update the guard without overwriting the form draft.
+    backend.modeReceived.emit("Jadalnia", "HEAT")
+    assert find(ac, "applySettings").property("enabled")
+    backend.modeReceived.emit("Jadalnia", "OFF")
+    assert not find(ac, "applySettings").property("enabled")
     assert ac.property("selectedFanSpeed") == "AUTO"
     await click(window, find(ac, "closeSettings"))
 
@@ -162,6 +267,33 @@ async def run():
     assert heater.property("opened") and heater.property("message")
     screenshot(window, "06b-blad-zapisu")
     backend._heater.set_mode = original
+    # A timed-out blocking command keeps both the form and shared-client cards
+    # disabled until the real worker ends. It must not send the next setting.
+    release = threading.Event()
+    def blocked_transport():
+        assert release.wait(3)
+    async def delayed_mode(*args):
+        await run_blocking(blocked_transport)
+    backend._heater.set_mode = delayed_mode
+    backend._command_timeout = .05
+    target_before = backend._heater.get_target_temp("Julia")
+    try:
+        await click(window, find(heater, "temperaturePlus"))
+        await click(window, find(heater, "applySettings"))
+        assert heater.property("failed") and not heater.property("saving")
+        assert heater.property("transportBusy")
+        assert not find(heater, "applySettings").property("enabled")
+        assert not find(julia, "devicePower").property("enabled")
+        assert find(window, "card_Juras").property("transportBusy")
+        release.set()
+        async with asyncio.timeout(2):
+            while heater.property("transportBusy"):
+                await asyncio.sleep(.01)
+        assert backend._heater.get_target_temp("Julia") == target_before
+    finally:
+        release.set()
+        backend._heater.set_mode = original
+        backend._command_timeout = 45
     await click(window, find(heater, "closeSettings"))
 
     backend.washerOnlineChanged.emit(True)

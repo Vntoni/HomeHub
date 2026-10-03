@@ -1,4 +1,5 @@
-import asyncio
+from App.operations import run_blocking
+from App.device_snapshot import DeviceSnapshot
 from Ports.heater import HeaterPort
 from atlantic_client import AtlanticCozytouchClient
 
@@ -16,15 +17,29 @@ class CozyTouchHeaterAdapter(HeaterPort):
         """
         self._client = client
         self._device_id = device_id
+        self._snapshot = None
 
     async def _command(self, method, *args, **kwargs):
-        if not await asyncio.to_thread(method, *args, **kwargs):
+        if not await run_blocking(method, *args, **kwargs):
             raise RuntimeError("Atlantic API did not accept the heater command")
 
     async def refresh(self) -> None:
         """Odśwież stan grzejnika"""
         # Client odświeża wszystkie urządzenia naraz
-        await asyncio.to_thread(self._client.get_devices)
+        devices = await run_blocking(self._client.get_devices)
+        if not isinstance(devices, list):
+            raise ValueError("Invalid Atlantic reading")
+        device = next((d for d in devices if isinstance(d, dict)
+                       and d.get("deviceId") == self._device_id), None)
+        if device is None:
+            raise ValueError("Atlantic device missing from readback")
+        caps = {c["capabilityId"]: c.get("value") for c in device.get("capabilities", [])}
+        if caps.get(184) not in {"0", "1"} or caps.get(157) not in {"0", "1"}:
+            raise ValueError("Incomplete Atlantic mode or power")
+        snapshot = DeviceSnapshot(float(caps.get(117)), float(caps.get(40)),
+                                  "manual" if caps[184] == "0" else "program",
+                                  caps[157] == "1")
+        self._snapshot = snapshot
 
     async def set_power(self, on: bool) -> None:
         """
@@ -45,8 +60,7 @@ class CozyTouchHeaterAdapter(HeaterPort):
 
         Uznajemy że grzejnik jest "włączony" jeśli ma aktywny wyjątek (cap 157 = 1)
         """
-        exception_mode = self._client.get_device_capability(self._device_id, 157)
-        return exception_mode == "1" if exception_mode else False
+        return self._snapshot.power if self._snapshot else False
 
     async def set_target_temperature(self, temp_c: float, duration_minutes: int = 120) -> None:
         """
@@ -70,15 +84,11 @@ class CozyTouchHeaterAdapter(HeaterPort):
         zwraca cap 40 (target temp)
         """
 
-        temp = self._client.get_device_capability(self._device_id, 40)
-
-
-        return float(temp) if temp else 0.0
+        return self._snapshot.target if self._snapshot else float("nan")
 
     def get_current_temperature(self) -> float:
         """Pobierz aktualną temperaturę (capability 117)"""
-        temp = self._client.get_actual_temperature(self._device_id)
-        return float(temp) if temp else 0.0
+        return self._snapshot.current if self._snapshot else float("nan")
 
     async def set_mode(self, mode: str) -> None:
         """
@@ -102,12 +112,7 @@ class CozyTouchHeaterAdapter(HeaterPort):
         Returns:
             "manual" lub "program"
         """
-        mode = self._client.get_device_capability(self._device_id, 184)
-        if mode == "0":
-            return "manual"
-        elif mode == "1":
-            return "program"
-        return "unknown"
+        return self._snapshot.mode if self._snapshot else "unknown"
 
     def is_online(self) -> bool:
         """
@@ -137,4 +142,3 @@ class CozyTouchHeaterAdapter(HeaterPort):
         except:
             # W razie błędu, uznajemy że offline
             return False
-

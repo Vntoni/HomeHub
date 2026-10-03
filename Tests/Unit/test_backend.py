@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -24,9 +25,20 @@ def backend(qt_app):
 async def test_failed_refresh_reports_boiler_offline(backend):
     backend._boiler.refresh.side_effect = RuntimeError("offline")
     received = []
+    stale = []
     backend.boilerOnlineChanged.connect(received.append)
+    backend.deviceStaleChanged.connect(lambda *args: stale.append(args))
     await backend.init_all()
     assert received == [False]
+    assert ("boiler", "boiler", True) in stale
+
+
+async def test_successful_refresh_clears_boiler_stale_state(backend):
+    backend._device_stale[("boiler", "boiler")] = True
+    stale = []
+    backend.deviceStaleChanged.connect(lambda *args: stale.append(args))
+    await backend.init_all()
+    assert ("boiler", "boiler", False) in stale
 
 
 async def test_settings_are_sequential_and_emit_refreshed_state(backend):
@@ -66,3 +78,37 @@ async def test_mode_slot_accepts_qml_string(backend):
     await backend.set_water_heater_mode("BOOST")
     backend._boiler.set_mode.assert_awaited_once_with("BOOST")
     assert backend.metaObject().indexOfMethod("set_water_heater_mode(QString)") >= 0
+
+
+async def test_shutdown_cancels_registered_task_and_closes_resource(backend):
+    closed = []
+    class Resource:
+        async def close(self):
+            closed.append("resource")
+    task = asyncio.create_task(asyncio.sleep(60))
+    backend.register_task(task)
+    backend.register_resource(Resource())
+    await backend.shutdown()
+    assert task.cancelled()
+    assert closed == ["resource"]
+    await backend.shutdown()
+
+
+async def test_shutdown_drains_sensors_before_database_and_reports_close_errors(backend):
+    events = []
+    class Sensors:
+        async def aclose(self):
+            events.append("sensor-final-write")
+    class Database:
+        async def close(self):
+            events.append("database")
+    class BrokenResource:
+        async def close(self):
+            events.append("broken")
+            raise RuntimeError("close failed")
+    backend._sensors = Sensors()
+    backend.register_resource(Database())
+    backend.register_resource(BrokenResource())
+    with pytest.raises(ExceptionGroup):
+        await backend.shutdown()
+    assert events == ["sensor-final-write", "broken", "database"]
