@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
 
 jobs:
   # ────────────────────────────────────────────
@@ -13,10 +16,13 @@ jobs:
   test:
     name: Run pytest
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v6
@@ -32,18 +38,25 @@ jobs:
             xvfb libxcb-cursor0
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -r requirements-demo.txt
 
-      - name: Run tests (headless Qt)
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: pytest Tests/ --cov=App --cov=Adapters --cov=Ports --cov=Interface --cov-report=term-missing
+      - name: Check dependency compatibility
+        run: python -m pip check
 
-      - name: Check touch panel interactions (demo, no network)
-        env:
-          QT_QPA_PLATFORM: offscreen
-          QT_QUICK_BACKEND: software
-        run: python Tests/ui_smoke.py
+      - name: Check syntax and project integrity
+        run: python Tests/check_integrity.py
+
+      - name: Run offline unit, regression and QML checks
+        run: python Tests/run_offline.py
+
+      - name: Upload test results even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homehub-test-results
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 7
 
   # ────────────────────────────────────────────
   # JOB 2 – build + deploy na RPi5
