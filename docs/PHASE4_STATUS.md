@@ -24,7 +24,7 @@ Pierwotny katalog HomeHub z niezacommitowaną pracą pozostaje bez zmian.
   wyszukiwania .env i constraints bezpośrednich zależności środowiska testowego.
 
 Przyczyny, odtworzenie, testy i ryzyko poszczególnych zmian opisują
-`HH-01_CHANGE.md` do `HH-14_CHANGE.md` (HH-02 wraz z opisem AC i raportem)
+`HH-01_CHANGE.md` do `HH-14_CHANGE.md`
 oraz `AUTO-01_CHANGE.md`.
 
 ## Integracja i walidacja
@@ -42,8 +42,14 @@ zostać zapisany przed zamknięciem DB. Drugie shutdown nie powtarza operacji.
 Lokalnie, macOS/Python 3.12: **338 passed**, kontrola składni i integralności
 PASS, `pip check` PASS, **5/5 smoke QML PASS** (start, interakcje/timer,
 potwierdzenie AC, SIGTERM, błąd ładowania QML). Guard potwierdził blokowanie
-7 niedozwolonych operacji. Wynik GitHub Actions zostanie uzupełniony po
-zakończeniu przebiegu. Logi lokalne są w `test-results/`.
+7 niedozwolonych operacji. Logi lokalne są w `test-results/`.
+
+[GitHub Actions dla commita 6dd95d9](https://github.com/Vntoni/HomeHub/actions/runs/37126496245)
+potwierdziło na Linux/Python 3.11.16: **338 passed, 5/5 smoke QML PASS**,
+kontrolę zależności, składni i integralności PASS. Wyniki zapisano jako artefakt.
+Job Build & Deploy on RPi5 został **SKIPPED**. Runner zgłosił ostrzeżenie
+o Node 20 w upload-artifact@v4; przesłanie artefaktu zakończyło się powodzeniem.
+Po tym przebiegu uzupełniono wyłącznie dokumentację; aktualne checki są w PR.
 
 Wyniki wcześniejszych PR-ów cząstkowych zawierają znane błędy z innych,
 nieobecnych tam napraw. Miarodajnym wynikiem całego zestawu jest integracja.
@@ -54,7 +60,8 @@ Nie pomijano regresji przez skip/xfail.
 Osobne draft PR-y #1–14 obejmują bazę testową i naprawy HH-01–12/AUTO-01.
 [PR #15](https://github.com/Vntoni/HomeHub/pull/15) obejmuje CI,
 [PR #16](https://github.com/Vntoni/HomeHub/pull/16) konfigurację i zależności.
-Wspólny draft PR integracji stanowi kandydat do review całego zestawu;
+[Wspólny draft PR #17](https://github.com/Vntoni/HomeHub/pull/17)
+stanowi kandydat do review całego zestawu;
 nie należy scalać automatycznie ani kolejno wdrażać niekompletnych PR-ów.
 
 ## Granice weryfikacji i dalsza decyzja
@@ -71,3 +78,7 @@ Przed wdrożeniem potrzebne są review użytkownika, zatwierdzenie przejścia do
 fazy 5 i izolowane testy na Pi według `RASPBERRY_PI_TESTING.md`. Istniejący
 deploy nadal wymienia katalog aplikacji; jego rollback wymaga pracy w fazie 5.
 Ustawień ochrony main nie zmieniano. Fazy 5 i 6 ani funkcji AI nie rozpoczęto.
+
+Zakres implementacji i integracji offline fazy 4 jest zakończony i gotowy do
+przeglądu. Nie oznacza to zatwierdzenia produkcyjnego wdrożenia ani zamknięcia
+niezweryfikowanej części HH-14 dotyczącej Pi.
