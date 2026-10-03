@@ -38,7 +38,7 @@ jobs:
             xvfb libxcb-cursor0
 
       - name: Install Python dependencies
-        run: python -m pip install -r requirements.txt -r requirements-demo.txt
+        run: python -m pip install -r requirements.txt -r requirements-demo.txt -c requirements-test-constraints.txt
 
       - name: Check dependency compatibility
         run: python -m pip check
