@@ -38,13 +38,14 @@ Wykonano:
 - istniejące testy poleceń backendu i panelu: `25 passed`.
 
 Testy nie używają fizycznych urządzeń ani prawdziwych danych uwierzytelniających.
-Pełny przebieg QML dla tej gałęzi wymaga ponownego uruchomienia w środowisku z
-dostępem do Qt; poprzednia próba została odrzucona przez limit środowiska
-uruchomieniowego, więc nie traktuję jej jako zaliczonej.
+Ponowny pełny przebieg offline: **231 passed, 2 failed**. Błędy dotyczą HH-03
+(zapis MQTT) i HH-04 (pogoda), naprawianych na odrębnych gałęziach. Startup QML,
+UI smoke (w tym blokada formularza po timeoutcie) i AC readback smoke: **PASS**.
+Pluginy Qt w testowym venv miały flagę macOS `hidden`; usunięcie tej flagi
+przywróciło wykrywanie `offscreen`. Nie zmieniono zależności produkcyjnych.
 
 ## Ryzyko i ograniczenia
 
 Zmiana obejmuje wspólną ścieżkę operacji AC, bojlera i grzejników. Nie zmienia
 protokołów urządzeń ani nie uruchamia prawdziwego sprzętu. Do potwierdzenia
-pozostaje pełny headless smoke test QML na tej konkretnej gałęzi oraz testy na
-Raspberry Pi z izolowaną konfiguracją.
+pozostają testy na Raspberry Pi z izolowaną konfiguracją.
