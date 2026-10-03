@@ -1,5 +1,13 @@
 # Faza 4 — wspólna weryfikacja napraw
 
+> Aktualizacja 2026-10-04: poniższy raport zachowuje stan sprzed review.
+> Użytkownik później zatwierdził merge i wdrożenie PR #17–20 oraz ręcznie
+> potwierdził działanie AC, pozycji nawiewu i odczytów Zigbee po ponownym
+> dodaniu czujnika do sieci. SDK Pi to pyairstage 2.4.0; awarię importu
+> usunięto w PR #19. PR #20 wyłączył automatyczny restart, ale błąd zamykania
+> pętli pozostaje otwarty. Faza 6: [plan asystenta](VOICE_ASSISTANT_ARCHITECTURE.md).
+> Nie jest to potwierdzenie pełnych testów wszystkich integracji ani rollbacku.
+
 Gałąź `audit/integration` łączy naprawy wywodzące się z wersji
 `2552c9b51cc77604af3e3e3c861ad3bd11e5009b` z 1 października.
 Nie wykonano merge do main, wdrożenia ani sterowania rzeczywistymi urządzeniami.
