@@ -142,7 +142,9 @@ async def test_service_stops_adapter_outside_event_loop_before_draining_writes()
         writes.append(temp)
     def close():
         assert threading.get_ident() != owner
-        service.record_reading("room", {"temperature": 20})
+        # HH-10 requires both measurements for a persisted reading. Missing
+        # humidity has its own rejection tests; here we test shutdown draining.
+        service.record_reading("room", {"temperature": 20, "humidity": 45})
     service = SensorService({"room": Mock(close=close)}, repository=Mock(save_sensor_reading=save))
     await service.aclose()
     assert writes == [20]
