@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -77,3 +78,37 @@ async def test_mode_slot_accepts_qml_string(backend):
     await backend.set_water_heater_mode("BOOST")
     backend._boiler.set_mode.assert_awaited_once_with("BOOST")
     assert backend.metaObject().indexOfMethod("set_water_heater_mode(QString)") >= 0
+
+
+async def test_shutdown_cancels_registered_task_and_closes_resource(backend):
+    closed = []
+    class Resource:
+        async def close(self):
+            closed.append("resource")
+    task = asyncio.create_task(asyncio.sleep(60))
+    backend.register_task(task)
+    backend.register_resource(Resource())
+    await backend.shutdown()
+    assert task.cancelled()
+    assert closed == ["resource"]
+    await backend.shutdown()
+
+
+async def test_shutdown_drains_sensors_before_database_and_reports_close_errors(backend):
+    events = []
+    class Sensors:
+        async def aclose(self):
+            events.append("sensor-final-write")
+    class Database:
+        async def close(self):
+            events.append("database")
+    class BrokenResource:
+        async def close(self):
+            events.append("broken")
+            raise RuntimeError("close failed")
+    backend._sensors = Sensors()
+    backend.register_resource(Database())
+    backend.register_resource(BrokenResource())
+    with pytest.raises(ExceptionGroup):
+        await backend.shutdown()
+    assert events == ["sensor-final-write", "broken", "database"]
