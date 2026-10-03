@@ -48,7 +48,7 @@ class SensorService:
         for sensor in self._sensor.values():
             close = getattr(sensor, "close", None)
             if close:
-                result = close()
+                result = await asyncio.to_thread(close)
                 if asyncio.iscoroutine(result):
                     await result
 

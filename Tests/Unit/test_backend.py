@@ -92,3 +92,23 @@ async def test_shutdown_cancels_registered_task_and_closes_resource(backend):
     assert task.cancelled()
     assert closed == ["resource"]
     await backend.shutdown()
+
+
+async def test_shutdown_drains_sensors_before_database_and_reports_close_errors(backend):
+    events = []
+    class Sensors:
+        async def aclose(self):
+            events.append("sensor-final-write")
+    class Database:
+        async def close(self):
+            events.append("database")
+    class BrokenResource:
+        async def close(self):
+            events.append("broken")
+            raise RuntimeError("close failed")
+    backend._sensors = Sensors()
+    backend.register_resource(Database())
+    backend.register_resource(BrokenResource())
+    with pytest.raises(ExceptionGroup):
+        await backend.shutdown()
+    assert events == ["sensor-final-write", "broken", "database"]

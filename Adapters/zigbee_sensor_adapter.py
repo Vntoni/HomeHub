@@ -38,6 +38,9 @@ class ZigbeeSensorAdapter:
     def _run(self):
         try:
             self._client.connect(self.BROKER_ADDRESS, self.BROKER_PORT, self.BROKER_KEEPALIVE)
+            if self._closed.is_set():
+                self._client.disconnect()
+                return
             self._client.loop_forever()
         except Exception as exc:
             if not self._closed.is_set():
@@ -45,8 +48,6 @@ class ZigbeeSensorAdapter:
 
     def close(self):
         """Stop the MQTT loop and wait for its private thread."""
-        if self._closed.is_set():
-            return
         self._closed.set()
         try:
             self._client.disconnect()
@@ -54,8 +55,13 @@ class ZigbeeSensorAdapter:
             pass
         if self._thread is not threading.current_thread():
             self._thread.join(timeout=2)
+            if self._thread.is_alive():
+                raise TimeoutError("MQTT worker did not stop")
 
     def _on_connect(self, client, userdata, flags, reason_code, properties):
+        if self._closed.is_set():
+            client.disconnect()
+            return
         print(f"[ZigbeeSensor:{self._name}] Connected, subscribing to {self._topic}")
         client.subscribe(self._topic)
 

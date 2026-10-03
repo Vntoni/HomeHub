@@ -115,7 +115,7 @@ class QtHomeBackend(QObject):
         self._lifecycle_tasks = set()
         self._lifecycle_resources = []
         self._shutdown_started = False
-        self.register_resource(sensor)
+        self._shutdown_task = None
 
     def register_task(self, task):
         """Register a background task owned by the application lifecycle."""
@@ -192,26 +192,46 @@ class QtHomeBackend(QObject):
         self.washerLastSeenChanged.emit(st.last_seen or "")
 
     async def shutdown(self):
-        if self._shutdown_started:
-            return
+        if self._shutdown_task is None:
+            self._shutdown_task = asyncio.create_task(self._shutdown_resources())
+        await asyncio.shield(self._shutdown_task)
+
+    async def _shutdown_resources(self):
         self._shutdown_started = True
-        try:
-            await self._operations.close()
-        finally:
-            if self._washer:
-                await self._washer.stop()
-            tasks = list(self._lifecycle_tasks)
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
-            if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
-            for resource in reversed(self._lifecycle_resources):
-                close = getattr(resource, "close", None)
-                if close:
-                    result = close()
+        errors = []
+        async def attempt(close):
+            try:
+                if inspect.iscoroutinefunction(close):
+                    await close()
+                else:
+                    result = await asyncio.to_thread(close)
                     if inspect.isawaitable(result):
                         await result
+            except Exception as exc:
+                errors.append(exc)
+
+        tasks = list(self._lifecycle_tasks)
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            errors.extend(result for result in results if isinstance(result, Exception))
+        await attempt(self._operations.close)
+        if self._washer:
+            await attempt(self._washer.stop)
+        # SensorService.aclose drains accepted writes; it must precede DB close.
+        resources = [self._sensors, *reversed(self._lifecycle_resources)]
+        seen = set()
+        for resource in resources:
+            if resource is None or id(resource) in seen:
+                continue
+            seen.add(id(resource))
+            close = getattr(resource, "aclose", None) or getattr(resource, "close", None)
+            if callable(close):
+                await attempt(close)
+        if errors:
+            raise ExceptionGroup("Application shutdown failed", errors)
 
     # --- init/refresh
     async def init_all(self):
