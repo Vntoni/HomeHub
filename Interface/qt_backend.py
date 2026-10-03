@@ -32,6 +32,7 @@ def device_operation(kind=None, finished=None):
                         lambda: method(self, *args, **kwargs), timeout=self._command_timeout,
                         on_late_done=lambda: self._reconcile(device_kind, room))
                 except (TimeoutError, OperationBusy, RuntimeError):
+                    self._set_device_stale(device_kind, room, True)
                     if finished is None:
                         raise
                     message = "Nie potwierdzono operacji. Urządzenie może nadal wykonywać polecenie; poczekaj na odczyt stanu."
@@ -123,6 +124,17 @@ class QtHomeBackend(QObject):
 
     async def _read_device(self, kind, room):
         async def read():
+            await self._refresh_device_state(kind, room)
+        try:
+            await self._operations.run(self._operation_key(kind, room), read,
+                                       timeout=self._read_timeout, read=(kind, room))
+        except TimeoutError:
+            self._set_device_stale(kind, room, True)
+            raise
+
+    async def _refresh_device_state(self, kind, room):
+        """Read inside an already owned operation, then publish freshness."""
+        try:
             if kind == "ac":
                 await self._climate.refresh(room)
             elif kind == "boiler":
@@ -131,13 +143,14 @@ class QtHomeBackend(QObject):
                 await self._heater.refresh(room)
             else:
                 raise ValueError("Device unavailable")
-        try:
-            await self._operations.run(self._operation_key(kind, room), read,
-                                       timeout=self._read_timeout, read=(kind, room))
         except Exception:
+            if kind == "boiler":
+                self._boiler_online = False
             self._set_device_stale(kind, room, True)
             raise
         else:
+            if kind == "boiler":
+                self._boiler_online = True
             self._set_device_stale(kind, room, False)
 
     def _set_device_stale(self, kind, room, stale):
@@ -324,7 +337,7 @@ class QtHomeBackend(QObject):
     @device_operation("boiler")
     async def set_water_heater_mode(self, mode: str):
         await self._boiler.set_mode(mode)
-        await self._boiler.refresh()
+        await self._refresh_device_state("boiler", "boiler")
         self.modeOperating.emit(self._boiler.get_mode())
 
     @asyncSlot(float, str)
@@ -337,7 +350,7 @@ class QtHomeBackend(QObject):
                     raise ValueError("Invalid boiler mode")
                 await self._boiler.set_mode(mode)
                 await self._boiler.set_target_temp(temp)
-                await self._boiler.refresh()
+                await self._refresh_device_state("boiler", "boiler")
                 self.targetTemperatureReceived.emit("boiler", self._boiler.get_target_temp())
                 self.modeOperating.emit(self._boiler.get_mode())
                 self.waterTemp.emit("boiler", self._boiler.get_current_temp())
@@ -523,7 +536,7 @@ class QtHomeBackend(QObject):
                     raise ValueError("Invalid mode")
                 # Check external changes since the form was opened before
                 # allowing the first write. A read error also blocks writes.
-                await self._climate.refresh(room)
+                await self._refresh_device_state("ac", room)
                 self._require_ac_on(room)
                 if mode == "OFF":
                     await self._climate.turn_off(room)
@@ -540,7 +553,7 @@ class QtHomeBackend(QObject):
                     if self._climate.low_noise(room) is not None:
                         await self._climate.set_low_noise(room, "ON" if quiet else "OFF")
                     await self._climate.turn_on(room)
-                await self._climate.refresh(room)
+                await self._refresh_device_state("ac", room)
                 self.acFanSpeedReceived.emit(room, self._climate.fan_speed(room))
                 await self.publish_dashboard()
             except ACSettingsBlocked:
@@ -566,7 +579,7 @@ class QtHomeBackend(QObject):
                     raise ValueError("Invalid heater settings")
                 await self._heater.set_mode(room, mode)
                 await self._heater.set_target_temp(room, temp, duration)
-                await self._heater.refresh(room)
+                await self._refresh_device_state("heater", room)
                 await self.publish_dashboard()
             except Exception:
                 self.heaterSettingsFinished.emit(room, False, "Nie udało się zapisać lub odczytać wszystkich ustawień. Odśwież stan urządzenia.")
@@ -581,15 +594,17 @@ class QtHomeBackend(QObject):
                 if kind == "ac":
                     await (self._climate.turn_on(room) if on else self._climate.turn_off(room))
                     await confirm_ac_power(self._climate, room, on)
+                    self._set_device_stale(kind, room, False)
                 elif kind == "boiler":
                     await self._boiler.set_power(on)
-                    await self._boiler.refresh()
+                    await self._refresh_device_state(kind, room)
                 elif kind == "heater" and self._heater:
                     await (self._heater.turn_on(room) if on else self._heater.turn_off(room))
-                    await self._heater.refresh(room)
+                    await self._refresh_device_state(kind, room)
                 else:
                     raise ValueError("Device unavailable")
             except Exception:
+                self._set_device_stale(kind, room, True)
                 self.devicePowerFinished.emit(kind, room, False, "Błąd polecenia lub odczytu. Odśwież urządzenie.")
             else:
                 self.devicePowerFinished.emit(kind, room, True, "Wysłano polecenie i odświeżono odczyt.")
