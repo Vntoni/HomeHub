@@ -182,12 +182,21 @@ async def run():
     await asyncio.sleep(0.05)
     assert map_value("tempText(tempSalon)") == "21,5°C"
     assert map_value("tempText(tempJadalnia)") == "20,0°C"
+    backend.sensorTempChanged.emit("lazienka", 20.6)
+    backend.sensorHumidityChanged.emit("lazienka", 65.0)
+    await asyncio.sleep(.05)
+    assert map_value("tempText(tempWC)") == "20,6°C"
+    assert map_value("humText(humWC)") == "65,0%"
     await click(window, find(temperature_map, "closeMap"))
 
     await click(window, find(salon, "deviceSettings"))
     ac = find(window, "acPopup")
     assert ac.property("opened") and ac.property("loaded"), warnings
     assert ac.property("selectedFanSpeed") == "AUTO"
+    airflow = find(ac, "airflowSelector")
+    assert airflow.property("count") == 5
+    airflow.setProperty("currentIndex", 4)
+    airflow.activated.emit(4)
     await click(window, find(ac, "fanSpeed_AUTO"))
     assert find(ac, "fanSpeed_AUTO").property("checked")
     await click(window, find(ac, "temperaturePlus"))
@@ -198,6 +207,8 @@ async def run():
     await click(window, find(ac, "applySettings"))
     assert backend._climate.target_temp("Salon") == 22.5
     assert backend._climate.fan_speed("Salon") == "QUIET"
+    assert backend._climate.airflow("Salon") == "SWING"
+    assert ac.property("currentAirflow") == "SWING"
     assert ac.property("currentFanSpeed") == "QUIET"
     assert not ac.property("saving") and not ac.property("failed")
     assert salon.property("targetTemperature") == 22.5

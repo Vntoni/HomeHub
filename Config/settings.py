@@ -37,7 +37,7 @@ class Settings:
     weather_longitude: float = 19.803053
     weather_poll_interval_seconds: int = 3600 # co 30 minut
     # Czujniki Zigbee – lista pokoi (oddzielone przecinkiem w .env)
-    sensor_rooms: str = "salon,jadalnia"
+    sensor_rooms: str = "salon,jadalnia,lazienka"
 
 def get_settings() -> Settings:
     return Settings(
@@ -56,5 +56,5 @@ def get_settings() -> Settings:
         weather_latitude=float(os.getenv("WEATHER_LATITUDE", "50.119391")),
         weather_longitude=float(os.getenv("WEATHER_LONGITUDE", "19.803053")),
         weather_poll_interval_seconds=int(os.getenv("WEATHER_POLL_INTERVAL", "3600")),
-        sensor_rooms=os.getenv("SENSOR_ROOMS", "salon,jadalnia"),
+        sensor_rooms=os.getenv("SENSOR_ROOMS", "salon,jadalnia,lazienka"),
     )

@@ -75,6 +75,7 @@ class QtHomeBackend(QObject):
     boilerSettingsFinished = Signal(bool, str)
     acSettingsFinished = Signal(str, bool, str)
     acFanSpeedReceived = Signal(str, str)
+    acAirflowReceived = Signal(str, str)
     heaterSettingsFinished = Signal(str, bool, str)
     deviceSettingsReceived = Signal(str, str, dict)
     deviceSettingsFailed = Signal(str, str, str)
@@ -524,6 +525,8 @@ class QtHomeBackend(QObject):
             return dict(target=self._climate.target_temp(room),
                         mode=self._climate.operating_mode(room),
                         fan_speed=self._climate.fan_speed(room),
+                        airflow=self._climate.airflow(room),
+                        airflow_options=self._climate.airflow_options(room),
                         economy=self._optional_bool(self._climate.economy(room)),
                         powerful=self._optional_bool(self._climate.powerful(room)),
                         quiet=self._optional_bool(self._climate.low_noise(room)))
@@ -579,9 +582,9 @@ class QtHomeBackend(QObject):
         if not math.isfinite(temp) or not minimum <= temp <= maximum:
             raise ValueError("Invalid temperature")
 
-    @asyncSlot(str, float, str, bool, bool, bool, str)
+    @asyncSlot(str, float, str, bool, bool, bool, str, str)
     @device_operation("ac", "acSettingsFinished")
-    async def apply_ac_settings(self, room, temp, mode, economy, powerful, quiet, fan_speed=""):
+    async def apply_ac_settings(self, room, temp, mode, economy, powerful, quiet, fan_speed="", airflow=""):
         async with self._command_lock("ac", room):
             try:
                 self._require_ac_on(room)
@@ -595,6 +598,8 @@ class QtHomeBackend(QObject):
                 # allowing the first write. A read error also blocks writes.
                 await self._refresh_device_state("ac", room)
                 self._require_ac_on(room)
+                if airflow and mode != "OFF" and airflow not in self._climate.airflow_options(room):
+                    raise ValueError("Unsupported airflow")
                 if mode == "OFF":
                     await self._climate.turn_off(room)
                 else:
@@ -603,6 +608,8 @@ class QtHomeBackend(QObject):
                         await self._climate.set_target_temp(room, temp)
                     if fan_speed:
                         await self._climate.set_fan_speed(room, fan_speed)
+                    if airflow:
+                        await self._climate.set_airflow(room, airflow)
                     if self._climate.economy(room) is not None:
                         await self._climate.set_economy(room, "ON" if economy and not powerful else "OFF")
                     if self._climate.powerful(room) is not None:
@@ -612,6 +619,9 @@ class QtHomeBackend(QObject):
                     await self._climate.turn_on(room)
                 await self._refresh_device_state("ac", room)
                 self.acFanSpeedReceived.emit(room, self._climate.fan_speed(room))
+                self.acAirflowReceived.emit(room, self._climate.airflow(room))
+                if airflow and mode != "OFF" and self._climate.airflow(room) != airflow:
+                    raise RuntimeError("Airflow was not confirmed by readback")
                 await self.publish_dashboard()
             except ACSettingsBlocked:
                 self.acSettingsFinished.emit(room, False, "Klimatyzator jest wyłączony lub jego stan nie jest potwierdzony. Włącz go przełącznikiem i odśwież odczyt.")
