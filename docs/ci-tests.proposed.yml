@@ -1,0 +1,43 @@
+# Proposal only: this file is intentionally outside .github/workflows.
+# Integrate the test job into ci-cd.yml; keep the existing deploy guard.
+name: HomeHub offline validation
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    name: Run pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install headless Qt libraries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1-mesa-dev libglib2.0-0 libxcb-cursor0
+      - name: Install existing runtime and test dependencies
+        run: python -m pip install -r requirements.txt -r requirements-demo.txt
+      - name: Verify dependency compatibility
+        run: python -m pip check
+      - name: Syntax and project integrity
+        run: python Tests/check_integrity.py
+      - name: Unit, regression, lifecycle and QML checks without devices
+        run: python Tests/run_offline.py
+      - name: Attach results even when regression tests fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homehub-test-results
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 7
