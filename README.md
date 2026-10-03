@@ -4,7 +4,7 @@
 
 **Frontend**: QML
 
-**Backend**: Python, PyQT6
+**Backend**: Python 3.11+, PySide6, asyncio/qasync
 
 **Plan to integrate**:
 - AC units (API connection, Control of temperature, Modes, reading the room temperature, working automation in summer/winter) ✔
@@ -14,10 +14,10 @@
 - Power consumption (API connection, get and save the data of hourly, daily, and monthly power consumption) ❌
 - Weather station (Build and connect to small wather/garden station to read data from sensors(air pollution, humidity, temperature) ❌
 
-**Further plans to develop**:
-- Add tests (pytest)
-- CI/CD (github actions)
-- AI voice agent integration - controlling the APP through voice
+**Development status**:
+- Existing pytest regression suite and offline QML tests.
+- GitHub Actions test workflow; production deploy only after a push to main.
+- AI voice integration is a future architectural topic, not implemented here.
 
   
 Project In Progress... 
@@ -37,10 +37,13 @@ Project In Progress...
 ## Local verification
 
 Use Python 3.11 or newer (the current pyairstage dependency uses `enum.StrEnum`).
-Install `requirements.txt`, then run:
+Use an isolated virtual environment. Install the runtime and pinned test stack:
 
 ```sh
-QT_QPA_PLATFORM=offscreen python -m pytest Tests/ --cov=App --cov=Adapters --cov=Ports --cov=Interface --cov-report=term-missing
+python -m pip install -r requirements.txt -r requirements-demo.txt -c requirements-test-constraints.txt
+python -m pip check
+python Tests/check_integrity.py
+python Tests/run_offline.py
 ```
 
 Tests use fake device clients and do not control household devices. CI runs this
@@ -58,11 +61,11 @@ to main, on the Raspberry Pi self-hosted runner.
   panel now sequences mode and temperature writes and reports refresh failures;
   a successful readback request alone does not guarantee the new settings have
   already propagated through the cloud.
-- MQTT callbacks currently run on another thread; database recording needs an
-  explicit handoff to the asyncio event loop. Missing sensor values also still
-  default to zero and need a separate unavailable/stale state.
+- The stabilization fixes hand MQTT callbacks to the owning asyncio loop and
+  preserve missing measurements as no data. Validate their combined shutdown
+  behavior through the integration branch before deploying independent fixes.
 - Startup still depends on successful AC and boiler authentication. Device
-  isolation, retry/backoff, and deployment rollback need further work.
+  isolation and deployment rollback must be checked before production rollout.
 - A credential was removed from the legacy boiler example. Rotate that credential;
   editing the file does not remove it from Git history.
 
