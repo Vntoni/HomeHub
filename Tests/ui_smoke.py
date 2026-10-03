@@ -97,6 +97,21 @@ async def run():
     assert window.property("isReady")
     screenshot(window, "00-start")
     salon = find(window, "card_Salon")
+    # Failure preserves the last displayed boiler values and marks them stale.
+    boiler_card = find(window, "card_boiler")
+    before = boiler_card.property("currentTemperature")
+    original_refresh = backend._boiler.refresh
+    async def failed_refresh():
+        raise ConnectionError("offline test")
+    backend._boiler.refresh = failed_refresh
+    await backend.refresh_connection()
+    await asyncio.sleep(.05)
+    assert boiler_card.property("stale")
+    assert boiler_card.property("currentTemperature") == before
+    backend._boiler.refresh = original_refresh
+    await backend.refresh_connection()
+    await asyncio.sleep(.05)
+    assert not boiler_card.property("stale")
     assert salon.property("targetTemperature") == 22.0
     screenshot(window, "01-parter")
     await click(window, find(window, "openMap"))

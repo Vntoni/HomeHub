@@ -16,6 +16,7 @@ Rectangle {
     property bool powered: false
     property bool busy: false
     property bool transportBusy: false
+    property bool stale: false
     property string powerLabel: "Włączone"
     property string message: ""
     property bool failed: false
@@ -64,8 +65,8 @@ Rectangle {
             }
         }
         Label {
-            text: root.busy ? "Wysyłanie…" : (root.transportBusy ? "Oczekiwanie na zakończenie operacji…" : (root.message || (root.online ? "Połączono" : "Brak połączenia")))
-            color: root.failed ? "#ffb4ab" : "#a9b8c6"
+            text: root.busy ? "Wysyłanie…" : (root.transportBusy ? "Oczekiwanie na zakończenie operacji…" : (root.stale ? "Dane nieaktualne — zachowano ostatni odczyt" : (root.message || (root.online ? "Połączono" : "Brak połączenia"))))
+            color: root.failed || root.stale ? "#ffb4ab" : "#a9b8c6"
             font.pixelSize: 13
             Layout.fillWidth: true
             wrapMode: Text.WordWrap

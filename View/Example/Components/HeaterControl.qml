@@ -38,6 +38,9 @@ ScrollView {
                     function onHeaterModeChanged(room, value) { if (room === card.modelData) card.mode = value }
                     function onHeaterOnlineChanged(room, value) { if (room === card.modelData) card.online = value }
                     function onHeaterPowerChanged(room, value) { if (room === card.modelData) card.powered = value }
+                    function onDeviceStaleChanged(kind, room, stale) {
+                        if (kind === "heater" && room === card.modelData) card.stale = stale
+                    }
                     function onDevicePowerFinished(kind, room, success, message) {
                         if (kind !== "heater" || room !== card.modelData) return
                         card.busy = false; card.failed = !success; card.message = message
