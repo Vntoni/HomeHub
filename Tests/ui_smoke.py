@@ -6,6 +6,7 @@ import asyncio
 from pathlib import Path
 import socket
 import sys
+import threading
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import QObject, QPointF, Qt, qInstallMessageHandler
@@ -16,6 +17,7 @@ from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtTest import QTest
 from qasync import QEventLoop
 from Compositions.demo import build_demo_backend
+from App.operations import run_blocking
 import View.images.images  # noqa: F401
 
 
@@ -185,6 +187,33 @@ async def run():
     assert heater.property("opened") and heater.property("message")
     screenshot(window, "06b-blad-zapisu")
     backend._heater.set_mode = original
+    # A timed-out blocking command keeps both the form and shared-client cards
+    # disabled until the real worker ends. It must not send the next setting.
+    release = threading.Event()
+    def blocked_transport():
+        assert release.wait(3)
+    async def delayed_mode(*args):
+        await run_blocking(blocked_transport)
+    backend._heater.set_mode = delayed_mode
+    backend._command_timeout = .05
+    target_before = backend._heater.get_target_temp("Julia")
+    try:
+        await click(window, find(heater, "temperaturePlus"))
+        await click(window, find(heater, "applySettings"))
+        assert heater.property("failed") and not heater.property("saving")
+        assert heater.property("transportBusy")
+        assert not find(heater, "applySettings").property("enabled")
+        assert not find(julia, "devicePower").property("enabled")
+        assert find(window, "card_Juras").property("transportBusy")
+        release.set()
+        async with asyncio.timeout(2):
+            while heater.property("transportBusy"):
+                await asyncio.sleep(.01)
+        assert backend._heater.get_target_temp("Julia") == target_before
+    finally:
+        release.set()
+        backend._heater.set_mode = original
+        backend._command_timeout = 45
     await click(window, find(heater, "closeSettings"))
 
     backend.washerOnlineChanged.emit(True)

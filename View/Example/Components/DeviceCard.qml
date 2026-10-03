@@ -15,6 +15,7 @@ Rectangle {
     property bool online: false
     property bool powered: false
     property bool busy: false
+    property bool transportBusy: false
     property string powerLabel: "Włączone"
     property string message: ""
     property bool failed: false
@@ -53,7 +54,7 @@ Rectangle {
             objectName: "devicePower"
             text: root.powerLabel
             checked: root.powered
-            enabled: root.online && !root.busy
+            enabled: root.online && !root.busy && !root.transportBusy
             Layout.fillWidth: true
             Layout.minimumHeight: 48
             font.pixelSize: 15
@@ -63,7 +64,7 @@ Rectangle {
             }
         }
         Label {
-            text: root.busy ? "Wysyłanie…" : (root.message || (root.online ? "Połączono" : "Brak połączenia"))
+            text: root.busy ? "Wysyłanie…" : (root.transportBusy ? "Oczekiwanie na zakończenie operacji…" : (root.message || (root.online ? "Połączono" : "Brak połączenia")))
             color: root.failed ? "#ffb4ab" : "#a9b8c6"
             font.pixelSize: 13
             Layout.fillWidth: true
@@ -72,7 +73,7 @@ Rectangle {
         PanelButton {
             objectName: "deviceSettings"
             text: "Ustawienia  ›"
-            enabled: root.online && !root.busy
+            enabled: root.online && !root.busy && !root.transportBusy
             Layout.fillWidth: true
             Layout.preferredHeight: 52
             font.pixelSize: 17

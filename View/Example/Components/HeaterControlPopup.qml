@@ -7,6 +7,8 @@ SettingsPopup {
     id: root
     objectName: "heaterPopup"
     property string room: ""
+    operationKind: "heater"
+    operationRoom: room
     property string selectedMode: ""
     property int durationMinutes: 120
     heading: room + " · Grzejnik"

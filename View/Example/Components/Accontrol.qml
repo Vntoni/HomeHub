@@ -52,6 +52,9 @@ ScrollView {
                         if (room !== card.modelData || kind !== (card.isBoiler ? "boiler" : "ac")) return
                         card.busy = false; card.failed = !success; card.message = message
                     }
+                    function onDeviceOperationBusyChanged(kind, room, busy) {
+                        if (room === card.modelData && kind === (card.isBoiler ? "boiler" : "ac")) card.transportBusy = busy
+                    }
                 }
             }
         }

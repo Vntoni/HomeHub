@@ -7,6 +7,8 @@ SettingsPopup {
     id: root
     objectName: "acPopup"
     property string room: ""
+    operationKind: "ac"
+    operationRoom: room
     property string selectedMode: ""
     property string loadedMode: ""
     readonly property bool deviceOn: ["COOL", "HEAT", "FAN", "DRY", "AUTO"].indexOf(loadedMode) >= 0

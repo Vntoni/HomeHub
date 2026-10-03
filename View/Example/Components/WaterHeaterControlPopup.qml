@@ -6,6 +6,7 @@ import "Ui.js" as Ui
 SettingsPopup {
     id: root
     objectName: "boilerPopup"
+    operationKind: "boiler"
     property string selectedMode: ""
     heading: "Ciepła woda"
     subtitle: "Temperatura i tryb bojlera"

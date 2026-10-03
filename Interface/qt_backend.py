@@ -9,6 +9,41 @@ from qasync import asyncSlot
 from typing import Optional
 import asyncio
 import math
+from functools import wraps
+from inspect import signature
+from App.operations import OperationCoordinator, OperationBusy
+
+
+def device_operation(kind=None, finished=None):
+    """Keep the real transport owned after a UI waiter times out."""
+    def decorate(method):
+        method_signature = signature(method)
+        @wraps(method)
+        async def guarded(self, *args, **kwargs):
+            arguments = method_signature.bind(self, *args, **kwargs).arguments
+            device_kind = kind or arguments["kind"]
+            room = arguments.get("room", "boiler")
+            # Preserve normal sequential commands for a room. After a timeout,
+            # the registry independently rejects work while its transport lives.
+            async with self._command_lock("request:" + device_kind, room):
+                try:
+                    return await self._operations.run(
+                        self._operation_key(device_kind, room),
+                        lambda: method(self, *args, **kwargs), timeout=self._command_timeout,
+                        on_late_done=lambda: self._reconcile(device_kind, room))
+                except (TimeoutError, OperationBusy, RuntimeError):
+                    if finished is None:
+                        raise
+                    message = "Nie potwierdzono operacji. Urządzenie może nadal wykonywać polecenie; poczekaj na odczyt stanu."
+                    signal = getattr(self, finished)
+                    if finished == "devicePowerFinished":
+                        signal.emit(device_kind, room, False, message)
+                    elif device_kind == "boiler":
+                        signal.emit(False, message)
+                    else:
+                        signal.emit(room, False, message)
+        return guarded
+    return decorate
 
 
 class ACSettingsBlocked(ValueError):
@@ -42,6 +77,7 @@ class QtHomeBackend(QObject):
     deviceSettingsReceived = Signal(str, str, dict)
     deviceSettingsFailed = Signal(str, str, str)
     devicePowerFinished = Signal(str, str, bool, str)
+    deviceOperationBusyChanged = Signal(str, str, bool)
 
     # Washer
     washerOnlineChanged = Signal(bool)
@@ -69,6 +105,36 @@ class QtHomeBackend(QObject):
         self._sensors = sensor
         self._boiler_online = False
         self._command_locks = {}
+        self._command_timeout = 45
+        self._read_timeout = 30
+        self._operations = OperationCoordinator(self._operation_busy)
+
+    def _operation_key(self, kind, room):
+        # Atlantic shares mutable client state and authentication across rooms.
+        return (kind, "shared" if kind == "heater" else room)
+
+    def _operation_busy(self, key, busy):
+        kind, room = key
+        rooms = self._heater.online_map() if kind == "heater" and self._heater else (room,)
+        for device_room in rooms:
+            self.deviceOperationBusyChanged.emit(kind, device_room, busy)
+
+    async def _read_device(self, kind, room):
+        async def read():
+            if kind == "ac":
+                await self._climate.refresh(room)
+            elif kind == "boiler":
+                await self._boiler.refresh()
+            elif kind == "heater" and self._heater:
+                await self._heater.refresh(room)
+            else:
+                raise ValueError("Device unavailable")
+        await self._operations.run(self._operation_key(kind, room), read,
+                                   timeout=self._read_timeout, read=(kind, room))
+
+    async def _reconcile(self, kind, room):
+        await self._read_device(kind, room)
+        await self.publish_dashboard()
 
     def _command_lock(self, kind, room):
         return self._command_locks.setdefault((kind, room), asyncio.Lock())
@@ -80,20 +146,24 @@ class QtHomeBackend(QObject):
         self.washerLastSeenChanged.emit(st.last_seen or "")
 
     async def shutdown(self):
-        if self._washer:
-            await self._washer.stop()
+        try:
+            await self._operations.close()
+        finally:
+            if self._washer:
+                await self._washer.stop()
 
     # --- init/refresh
     async def init_all(self):
         if self._washer:
             await self._washer.start(self._on_washer_snapshot)
         # odśwież AC i boiler, oceń online
+        for room in self._climate.online_map():
+            try:
+                await self._read_device("ac", room)
+            except Exception:
+                print("Not working climate refresh")
         try:
-            await self._climate.refresh_all()
-        except:
-            print("Not working climate refresh")
-        try:
-            await self._boiler.refresh()
+            await self._read_device("boiler", "boiler")
             self._boiler_online = True
             self.boilerOnlineChanged.emit(True)
         except Exception as exc:
@@ -104,7 +174,11 @@ class QtHomeBackend(QObject):
         # Odśwież grzejniki jeśli są dostępne
         if self._heater:
             try:
-                await self._heater.refresh_all()
+                for room in self._heater.online_map():
+                    try:
+                        await self._read_device("heater", room)
+                    except Exception:
+                        print("Not working heater refresh")
 
                 # Emituj statusy online
                 online_map = self._heater.online_map()
@@ -160,9 +234,11 @@ class QtHomeBackend(QObject):
 
     # --- AC
     @asyncSlot(str)
+    @device_operation("ac")
     async def turn_on_ac(self, room: str): await self._climate.turn_on(room)
 
     @asyncSlot(str)
+    @device_operation("ac")
     async def turn_off_ac(self, room: str): await self._climate.turn_off(room)
 
     @asyncSlot(str)
@@ -174,6 +250,7 @@ class QtHomeBackend(QObject):
         self.targetTemperatureReceived.emit(room, self._climate.target_temp(room))
 
     @asyncSlot(str, float)
+    @device_operation("ac")
     async def set_target_temp(self, room: str, temp: float):
         await self._climate.set_target_temp(room, temp)
         self.targetTemperatureReceived.emit(room, self._climate.target_temp(room))
@@ -183,6 +260,7 @@ class QtHomeBackend(QObject):
         self.economyReceived.emit(room, self._climate.economy(room))
 
     @asyncSlot(str, str)
+    @device_operation("ac")
     async def set_economy(self, room: str, mode: str):
         await self._climate.set_economy(room, mode)
         self.economyReceived.emit(room, self._climate.economy(room))
@@ -192,6 +270,7 @@ class QtHomeBackend(QObject):
         self.powerfulReceived.emit(room, self._climate.powerful(room))
 
     @asyncSlot(str, str)
+    @device_operation("ac")
     async def set_powerful(self, room: str, mode: str):
         await self._climate.set_powerful(room, mode)
         self.powerfulReceived.emit(room, self._climate.powerful(room))
@@ -201,6 +280,7 @@ class QtHomeBackend(QObject):
         self.lowNoiseReceived.emit(room, self._climate.low_noise(room))
 
     @asyncSlot(str, str)
+    @device_operation("ac")
     async def set_low_noise(self, room: str, mode: str):
         print(f"Setting low noise for room: {room}, MODE: {mode}")
         await self._climate.set_low_noise(room, mode)
@@ -212,28 +292,30 @@ class QtHomeBackend(QObject):
         self.modeReceived.emit(room, self._climate.operating_mode(room))
 
     @asyncSlot(str, str)
+    @device_operation("ac")
     async def set_mode_operation(self, room: str, mode: str):
         await self._climate.set_operating_mode(room, mode)
         self.modeReceived.emit(room, self._climate.operating_mode(room))
 
     # --- Boiler
     @asyncSlot(str)
+    @device_operation("boiler")
     async def set_water_heater_mode(self, mode: str):
         await self._boiler.set_mode(mode)
         await self._boiler.refresh()
         self.modeOperating.emit(self._boiler.get_mode())
 
     @asyncSlot(float, str)
+    @device_operation("boiler", "boilerSettingsFinished")
     async def apply_water_heater_settings(self, temp: float, mode: str):
         async with self._command_lock("boiler", "boiler"):
             try:
                 self._validate_temperature(temp, 40, 65)
                 if mode not in {"GREEN", "IMEMORY", "BOOST", "PROGRAM"}:
                     raise ValueError("Invalid boiler mode")
-                async with asyncio.timeout(45):
-                    await self._boiler.set_mode(mode)
-                    await self._boiler.set_target_temp(temp)
-                    await self._boiler.refresh()
+                await self._boiler.set_mode(mode)
+                await self._boiler.set_target_temp(temp)
+                await self._boiler.refresh()
                 self.targetTemperatureReceived.emit("boiler", self._boiler.get_target_temp())
                 self.modeOperating.emit(self._boiler.get_mode())
                 self.waterTemp.emit("boiler", self._boiler.get_current_temp())
@@ -246,6 +328,7 @@ class QtHomeBackend(QObject):
                 self.boilerSettingsFinished.emit(True, "Wysłano ustawienia i odświeżono odczyt. Chmura może potwierdzić zmianę z opóźnieniem.")
 
     @asyncSlot(bool)
+    @device_operation("boiler")
     async def set_water_heater_power(self, power: bool):
         await self._boiler.set_power(power)
 
@@ -254,6 +337,7 @@ class QtHomeBackend(QObject):
         self.powerStatus.emit(self._boiler.get_power())
 
     @asyncSlot(float)
+    @device_operation("boiler")
     async def set_water_target_temp(self, temp: float):
         await self._boiler.set_target_temp(temp)
 
@@ -271,6 +355,7 @@ class QtHomeBackend(QObject):
 
     # --- Heaters (grzejniki elektryczne) ---
     @asyncSlot(str)
+    @device_operation("heater")
     async def turn_on_heater(self, room: str):
         """Włącz grzejnik w danym pokoju"""
         if self._heater:
@@ -278,6 +363,7 @@ class QtHomeBackend(QObject):
             self.heaterPowerChanged.emit(room, True)
 
     @asyncSlot(str)
+    @device_operation("heater")
     async def turn_off_heater(self, room: str):
         """Wyłącz grzejnik w danym pokoju"""
         if self._heater:
@@ -291,6 +377,7 @@ class QtHomeBackend(QObject):
             self.heaterPowerChanged.emit(room, self._heater.get_power(room))
 
     @asyncSlot(str, float, int)
+    @device_operation("heater")
     async def set_heater_target_temp(self, room: str, temp: float, duration_minutes: int = 120):
         """
         Ustaw temperaturę docelową grzejnika
@@ -317,6 +404,7 @@ class QtHomeBackend(QObject):
             self.heaterCurrentTempChanged.emit(room, self._heater.get_current_temp(room))
 
     @asyncSlot(str, str)
+    @device_operation("heater")
     async def set_heater_mode(self, room: str, mode: str):
         """
         Ustaw tryb pracy grzejnika
@@ -400,6 +488,7 @@ class QtHomeBackend(QObject):
             raise ValueError("Invalid temperature")
 
     @asyncSlot(str, float, str, bool, bool, bool, str)
+    @device_operation("ac", "acSettingsFinished")
     async def apply_ac_settings(self, room, temp, mode, economy, powerful, quiet, fan_speed=""):
         async with self._command_lock("ac", room):
             try:
@@ -410,27 +499,26 @@ class QtHomeBackend(QObject):
                     raise ValueError("Invalid fan speed")
                 if mode not in {"COOL", "HEAT", "FAN", "DRY", "AUTO", "OFF"}:
                     raise ValueError("Invalid mode")
-                async with asyncio.timeout(45):
-                    # Check external changes since the form was opened before
-                    # allowing the first write. A read error also blocks writes.
-                    await self._climate.refresh(room)
-                    self._require_ac_on(room)
-                    if mode == "OFF":
-                        await self._climate.turn_off(room)
-                    else:
-                        await self._climate.set_operating_mode(room, mode)
-                        if mode != "FAN":
-                            await self._climate.set_target_temp(room, temp)
-                        if fan_speed:
-                            await self._climate.set_fan_speed(room, fan_speed)
-                        if self._climate.economy(room) is not None:
-                            await self._climate.set_economy(room, "ON" if economy and not powerful else "OFF")
-                        if self._climate.powerful(room) is not None:
-                            await self._climate.set_powerful(room, "ON" if powerful else "OFF")
-                        if self._climate.low_noise(room) is not None:
-                            await self._climate.set_low_noise(room, "ON" if quiet else "OFF")
-                        await self._climate.turn_on(room)
-                    await self._climate.refresh(room)
+                # Check external changes since the form was opened before
+                # allowing the first write. A read error also blocks writes.
+                await self._climate.refresh(room)
+                self._require_ac_on(room)
+                if mode == "OFF":
+                    await self._climate.turn_off(room)
+                else:
+                    await self._climate.set_operating_mode(room, mode)
+                    if mode != "FAN":
+                        await self._climate.set_target_temp(room, temp)
+                    if fan_speed:
+                        await self._climate.set_fan_speed(room, fan_speed)
+                    if self._climate.economy(room) is not None:
+                        await self._climate.set_economy(room, "ON" if economy and not powerful else "OFF")
+                    if self._climate.powerful(room) is not None:
+                        await self._climate.set_powerful(room, "ON" if powerful else "OFF")
+                    if self._climate.low_noise(room) is not None:
+                        await self._climate.set_low_noise(room, "ON" if quiet else "OFF")
+                    await self._climate.turn_on(room)
+                await self._climate.refresh(room)
                 self.acFanSpeedReceived.emit(room, self._climate.fan_speed(room))
                 await self.publish_dashboard()
             except ACSettingsBlocked:
@@ -447,16 +535,16 @@ class QtHomeBackend(QObject):
             raise ACSettingsBlocked()
 
     @asyncSlot(str, float, str, int)
+    @device_operation("heater", "heaterSettingsFinished")
     async def apply_heater_settings(self, room, temp, mode, duration):
         async with self._command_lock("heater", room):
             try:
                 self._validate_temperature(temp, 7, 28)
                 if not self._heater or mode not in {"manual", "program"} or duration not in {30, 60, 120, 240}:
                     raise ValueError("Invalid heater settings")
-                async with asyncio.timeout(45):
-                    await self._heater.set_mode(room, mode)
-                    await self._heater.set_target_temp(room, temp, duration)
-                    await self._heater.refresh(room)
+                await self._heater.set_mode(room, mode)
+                await self._heater.set_target_temp(room, temp, duration)
+                await self._heater.refresh(room)
                 await self.publish_dashboard()
             except Exception:
                 self.heaterSettingsFinished.emit(room, False, "Nie udało się zapisać lub odczytać wszystkich ustawień. Odśwież stan urządzenia.")
@@ -464,21 +552,21 @@ class QtHomeBackend(QObject):
                 self.heaterSettingsFinished.emit(room, True, "Wysłano ustawienia i odświeżono odczyt. Chmura może potwierdzić zmianę z opóźnieniem.")
 
     @asyncSlot(str, str, bool)
+    @device_operation(finished="devicePowerFinished")
     async def apply_device_power(self, kind, room, on):
         async with self._command_lock(kind, room):
             try:
-                async with asyncio.timeout(45):
-                    if kind == "ac":
-                        await (self._climate.turn_on(room) if on else self._climate.turn_off(room))
-                        await confirm_ac_power(self._climate, room, on)
-                    elif kind == "boiler":
-                        await self._boiler.set_power(on)
-                        await self._boiler.refresh()
-                    elif kind == "heater" and self._heater:
-                        await (self._heater.turn_on(room) if on else self._heater.turn_off(room))
-                        await self._heater.refresh(room)
-                    else:
-                        raise ValueError("Device unavailable")
+                if kind == "ac":
+                    await (self._climate.turn_on(room) if on else self._climate.turn_off(room))
+                    await confirm_ac_power(self._climate, room, on)
+                elif kind == "boiler":
+                    await self._boiler.set_power(on)
+                    await self._boiler.refresh()
+                elif kind == "heater" and self._heater:
+                    await (self._heater.turn_on(room) if on else self._heater.turn_off(room))
+                    await self._heater.refresh(room)
+                else:
+                    raise ValueError("Device unavailable")
             except Exception:
                 self.devicePowerFinished.emit(kind, room, False, "Błąd polecenia lub odczytu. Odśwież urządzenie.")
             else:

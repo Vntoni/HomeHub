@@ -1,4 +1,4 @@
-import asyncio
+from App.operations import run_blocking
 from Ports.heater import HeaterPort
 from atlantic_client import AtlanticCozytouchClient
 
@@ -18,13 +18,13 @@ class CozyTouchHeaterAdapter(HeaterPort):
         self._device_id = device_id
 
     async def _command(self, method, *args, **kwargs):
-        if not await asyncio.to_thread(method, *args, **kwargs):
+        if not await run_blocking(method, *args, **kwargs):
             raise RuntimeError("Atlantic API did not accept the heater command")
 
     async def refresh(self) -> None:
         """Odśwież stan grzejnika"""
         # Client odświeża wszystkie urządzenia naraz
-        await asyncio.to_thread(self._client.get_devices)
+        await run_blocking(self._client.get_devices)
 
     async def set_power(self, on: bool) -> None:
         """
@@ -137,4 +137,3 @@ class CozyTouchHeaterAdapter(HeaterPort):
         except:
             # W razie błędu, uznajemy że offline
             return False
-
