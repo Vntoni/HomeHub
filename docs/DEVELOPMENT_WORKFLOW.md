@@ -1,5 +1,14 @@
 # HomeHub — workflow rozwoju i wdrażania
 
+> Aktualizacja 2026-10-04: części opisujące fazy 2–3 poniżej są historyczne.
+> Na zatwierdzonym main testy PR wykonuje już Tests/run_offline.py, a deploy
+> nadal uruchamia się wyłącznie po push do main. Użytkownik wybrał uproszczony
+> proces jednoosobowego projektu i jawnie zatwierdził scalenia PR #17–20;
+> proponowanych ustawień ochrony repozytorium nie wdrażano. Restart=no jest
+> już w usłudze i drop-in deployu. Rollback artefaktu i błąd zamykania qasync
+> pozostają otwarte. Kolejna zatwierdzona faza to wyłącznie
+> [rekomendacje asystenta głosowego](VOICE_ASSISTANT_ARCHITECTURE.md), bez AI w kodzie.
+
 ## Zakres i punkt odniesienia
 
 Ten dokument opisuje bezpieczny workflow dla HomeHub po audycie wykonanym na
