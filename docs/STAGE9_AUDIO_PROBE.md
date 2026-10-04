@@ -28,7 +28,11 @@ nagrywania. W trybie demo audio sprzętowe jest wyłączone.
 
 - `Ports/audio_probe.py`: kontrakt adaptera i opis formatu PCM Int16.
 - `Adapters/qt_audio_probe.py`: Qt Multimedia z istniejącego PySide6;
-  import i enumeracja dopiero po otwarciu panelu. Brak nowych pakietów.
+  import i enumeracja dopiero po otwarciu panelu. Brak nowych pakietów Pythona.
+  Na Linuxie Qt Multimedia wymaga biblioteki `libpulse.so.0` (`libpulse0`).
+  Dodano ją do runnera CI po odtworzeniu błędu importu; nie instalujemy
+  ani nie uruchamiamy serwera PulseAudio. Dostępność biblioteki na Pi
+  sprawdza krok importu przed wdrożeniem.
 - `Interface/qt_audio_probe.py`: ograniczony bufor, timer, stany testu,
   poziom sygnału i odrzucanie opóźnionych callbacków po zatrzymaniu.
 - `AudioProbePopup.qml`: jawny wybór wejścia/wyjścia i akcje testu.
