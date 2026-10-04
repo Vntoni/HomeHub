@@ -104,6 +104,10 @@ jobs:
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python Tests/run_offline.py --smoke-only shutdown_smoke window_close_smoke qml_quit_smoke shutdown_error_smoke qml_failure_smoke
 
+      - name: Check optional audio imports on Pi (no recording)
+        run: |
+          ~/.virtualenvs/Baza_Domowa/bin/python -c 'from Adapters.qt_audio_probe import QtAudioProbe; print("Qt audio adapter import OK; no devices opened")'
+
       - name: Build with PyInstaller
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python build_app.py

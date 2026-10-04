@@ -1,5 +1,6 @@
 from PySide6.QtCore import QObject, Signal, Property
 from Ports.respeaker import RespeakerStatus
+from Interface.qt_audio_probe import AudioProbeController
 from App.climate_service import ClimateService, confirm_ac_power
 from App.sensor_service import SensorService
 from App.water_heater_service import WaterHeaterService
@@ -54,6 +55,10 @@ class ACSettingsBlocked(ValueError):
 
 
 class QtHomeBackend(QObject):
+    @Property(QObject, constant=True)
+    def audioProbe(self):
+        return self._audio_probe
+
     respeakerStatusChanged = Signal()
 
     @Property(bool, notify=respeakerStatusChanged)
@@ -112,7 +117,7 @@ class QtHomeBackend(QObject):
 
     def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
                  washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None,
-                 respeaker=None):
+                 respeaker=None, audio_factory=None):
         super().__init__()
         self._climate = climate
         self._boiler = boiler
@@ -122,6 +127,7 @@ class QtHomeBackend(QObject):
         self._respeaker = respeaker
         self._respeaker_status = RespeakerStatus()
         self._respeaker_task = None
+        self._audio_probe = AudioProbeController(audio_factory, self)
         self._boiler_online = False
         self._command_locks = {}
         self._command_timeout = 45
@@ -143,6 +149,7 @@ class QtHomeBackend(QObject):
     def _on_respeaker_status(self, status):
         if not self._shutdown_started and status != self._respeaker_status:
             self._respeaker_status = status
+            self._audio_probe.set_connected(status.connected)
             self.respeakerStatusChanged.emit()
 
     def _start_respeaker_monitor(self):
@@ -219,6 +226,7 @@ class QtHomeBackend(QObject):
         self.washerLastSeenChanged.emit(st.last_seen or "")
 
     async def shutdown(self):
+        self._audio_probe.shutdown()  # Qt objects must close on the UI thread, before device waits.
         if self._shutdown_task is None:
             self._shutdown_task = asyncio.create_task(self._shutdown_resources())
         await asyncio.shield(self._shutdown_task)
