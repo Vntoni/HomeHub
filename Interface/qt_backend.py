@@ -1,4 +1,5 @@
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, Property
+from Ports.respeaker import RespeakerStatus
 from App.climate_service import ClimateService, confirm_ac_power
 from App.sensor_service import SensorService
 from App.water_heater_service import WaterHeaterService
@@ -53,6 +54,16 @@ class ACSettingsBlocked(ValueError):
 
 
 class QtHomeBackend(QObject):
+    respeakerStatusChanged = Signal()
+
+    @Property(bool, notify=respeakerStatusChanged)
+    def respeakerConnected(self):
+        return self._respeaker_status.connected
+
+    @Property(str, notify=respeakerStatusChanged)
+    def respeakerStatusText(self):
+        return self._respeaker_status.message
+
     # statusy online
     ready = Signal(bool)
     acSalonOnlineChanged = Signal(bool)
@@ -100,13 +111,17 @@ class QtHomeBackend(QObject):
     sensorHumidityChanged = Signal(str, "QVariant")  # pokój, wilgotność lub None
 
     def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
-                 washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None):
+                 washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None,
+                 respeaker=None):
         super().__init__()
         self._climate = climate
         self._boiler = boiler
         self._washer = washer
         self._heater = heater
         self._sensors = sensor
+        self._respeaker = respeaker
+        self._respeaker_status = RespeakerStatus()
+        self._respeaker_task = None
         self._boiler_online = False
         self._command_locks = {}
         self._command_timeout = 45
@@ -124,6 +139,16 @@ class QtHomeBackend(QObject):
         self._lifecycle_tasks.add(task)
         task.add_done_callback(self._lifecycle_tasks.discard)
         return task
+
+    def _on_respeaker_status(self, status):
+        if not self._shutdown_started and status != self._respeaker_status:
+            self._respeaker_status = status
+            self.respeakerStatusChanged.emit()
+
+    def _start_respeaker_monitor(self):
+        if self._respeaker is not None and self._respeaker_task is None and not self._shutdown_started:
+            self._respeaker_task = self.register_task(
+                asyncio.create_task(self._respeaker.run(self._on_respeaker_status)))
 
     def register_resource(self, resource):
         """Register an async/sync-close resource for deterministic shutdown."""
@@ -237,6 +262,7 @@ class QtHomeBackend(QObject):
 
     # --- init/refresh
     async def init_all(self):
+        self._start_respeaker_monitor()
         if self._washer:
             await self._washer.start(self._on_washer_snapshot)
         # odśwież AC i boiler, oceń online

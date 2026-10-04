@@ -38,6 +38,12 @@ ApplicationWindow {
                 Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : "Temperatura i urządzenia"; color: "#a9b8c6"; font.pixelSize: 14 }
             }
             Item { Layout.fillWidth: true }
+            MicrophoneStatus {
+                connected: backend ? backend.respeakerConnected : false
+                statusText: backend ? backend.respeakerStatusText : "ReSpeaker niepodłączony"
+                Layout.preferredWidth: 52
+                Layout.preferredHeight: 52
+            }
             PanelButton {
                 objectName: "refreshDevices"
                 text: appWindow.refreshing ? "Odświeżanie…" : "Odśwież"
