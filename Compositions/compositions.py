@@ -17,6 +17,8 @@ from App.washer_service import WasherService
 from Interface.qt_backend import QtHomeBackend
 from App.operations import run_blocking
 from App.lifecycle import build_with_resources
+from Adapters.respeaker_usb_adapter import RespeakerUsbAdapter
+from App.respeaker_service import RespeakerService
 
 async def build_backend() -> QtHomeBackend:
     # Resources belong to this scope before the first operation that can fail.
@@ -187,7 +189,8 @@ async def _build_backend(resources) -> QtHomeBackend:
         _backend_ref = [None]
 
     # --- Qt adapter (QObject) ---
-    backend = QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc, sensor_svc)
+    backend = QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc, sensor_svc,
+                            respeaker=RespeakerService(RespeakerUsbAdapter()))
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
 
     # --- Pogoda Open-Meteo (polling w tle) ---

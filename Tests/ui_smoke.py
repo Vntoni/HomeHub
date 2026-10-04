@@ -18,6 +18,8 @@ from PySide6.QtTest import QTest
 from qasync import QEventLoop
 from Compositions.demo import build_demo_backend
 from App.operations import run_blocking
+from App.respeaker_service import RespeakerService
+from Ports.respeaker import RespeakerStatus
 import View.images.images  # noqa: F401
 
 
@@ -34,7 +36,7 @@ app = QGuiApplication([])
 loop = QEventLoop(app)
 asyncio.set_event_loop(loop)
 engine = QQmlApplicationEngine()
-output = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+output = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "test-results" / "ui"
 if output:
     output.mkdir(parents=True, exist_ok=True)
 
@@ -86,6 +88,12 @@ def screenshot(window, name):
 
 async def run():
     backend = await build_demo_backend()
+    class UsbProbe:
+        state = RespeakerStatus()
+        def read_status(self):
+            return self.state
+    usb = UsbProbe()
+    backend._respeaker = RespeakerService(usb, .02)
     engine.rootContext().setContextProperty("backend", backend)
     engine.rootContext().setContextProperty("demoMode", True)
     engine.addImportPath(str(Path(__file__).resolve().parents[1] / "View"))
@@ -95,6 +103,33 @@ async def run():
     await backend.init_all()
     await asyncio.sleep(0.4)
     assert window.property("isReady")
+    microphone = find(window, "microphoneStatus")
+    microphone_icon = find(window, "microphoneIcon")
+    def icon_ready():
+        # QQuickImageBase's enum is not registered with PySide; evaluate it in
+        # JS. Ready is 1; the ad-hoc expression has no QtQuick import namespace.
+        expression = QQmlExpression(engine.rootContext(), microphone_icon, "status === 1")
+        value = expression.evaluate()
+        assert not expression.hasError(), expression.error().toString()
+        return value[0] if isinstance(value, tuple) else value
+    assert not microphone.property("connected")
+    assert str(microphone_icon.property("source").toString()).endswith("microphone-disconnected.svg")
+    assert icon_ready()  # SVG packaged and loaded.
+    screenshot(window, "00-microphone-disconnected")
+    usb.state = RespeakerStatus(True, "ReSpeaker podłączony przez USB — nagrywanie wyłączone")
+    async with asyncio.timeout(2):
+        while not microphone.property("connected"):
+            await asyncio.sleep(.01)
+    assert microphone.property("statusText") == usb.state.message
+    assert microphone_icon.property("source").toString().endswith("microphone-connected.svg")
+    await asyncio.sleep(.05)
+    assert icon_ready()
+    screenshot(window, "00-microphone-connected")
+    usb.state = RespeakerStatus()
+    async with asyncio.timeout(2):
+        while microphone.property("connected"):
+            await asyncio.sleep(.01)
+    assert microphone_icon.property("source").toString().endswith("microphone-disconnected.svg")
     refresh_timer = find(window, "deviceRefreshTimer")
     assert refresh_timer.property("interval") == 900000
     # Exercise the actual timer with a shortened test interval. A slow cloud
@@ -234,6 +269,12 @@ async def run():
     assert backend._climate.fan_speed("Salon") == "HIGH"
     await click(window, find(ac, "closeSettings"))
     await click(window, find(find(window, "card_Jadalnia"), "deviceSettings"))
+    # Opening includes an animation and asynchronous readback. Do not assert
+    # the result after only the click helper's fixed rendering delay.
+    async with asyncio.timeout(3):
+        while not (ac.property("opened") and ac.property("loaded")
+                   and ac.property("room") == "Jadalnia"):
+            await asyncio.sleep(.01)
     assert ac.property("loadedMode") == "OFF"
     assert not find(ac, "applySettings").property("enabled")
     await click(window, find(ac, "acMode_HEAT"))
