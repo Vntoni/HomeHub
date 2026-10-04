@@ -35,7 +35,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libegl1 libgl1-mesa-dev libglib2.0-0 \
-            xvfb libxcb-cursor0
+            xvfb libxcb-cursor0 libpulse0
 
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt -r requirements-demo.txt -c requirements-test-constraints.txt
@@ -103,6 +103,10 @@ jobs:
         # Trusted main only; fake devices, offscreen Qt, live app still running.
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python Tests/run_offline.py --smoke-only shutdown_smoke window_close_smoke qml_quit_smoke shutdown_error_smoke qml_failure_smoke
+
+      - name: Check optional audio imports on Pi (no recording)
+        run: |
+          ~/.virtualenvs/Baza_Domowa/bin/python -c 'from Adapters.qt_audio_probe import QtAudioProbe; print("Qt audio adapter import OK; no devices opened")'
 
       - name: Build with PyInstaller
         run: |

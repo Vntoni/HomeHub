@@ -20,6 +20,7 @@ from Compositions.demo import build_demo_backend
 from App.operations import run_blocking
 from App.respeaker_service import RespeakerService
 from Ports.respeaker import RespeakerStatus
+from Tests.fake_audio_probe import FakeAudioProbe
 import View.images.images  # noqa: F401
 
 
@@ -94,6 +95,8 @@ async def run():
             return self.state
     usb = UsbProbe()
     backend._respeaker = RespeakerService(usb, .02)
+    audio = FakeAudioProbe()
+    backend.audioProbe._factory = lambda changed: audio
     engine.rootContext().setContextProperty("backend", backend)
     engine.rootContext().setContextProperty("demoMode", True)
     engine.addImportPath(str(Path(__file__).resolve().parents[1] / "View"))
@@ -125,6 +128,36 @@ async def run():
     await asyncio.sleep(.05)
     assert icon_ready()
     screenshot(window, "00-microphone-connected")
+    for width, height in [(1280, 720), (800, 480)]:
+        window.setWidth(width)
+        window.setHeight(height)
+        await asyncio.sleep(.1)
+        await click(window, microphone)
+        popup = find(window, "audioProbePopup")
+        assert popup.property("opened") and not backend.audioProbe.busy
+        assert not find(popup, "recordAudioProbe").property("enabled")
+        find(popup, "audioInputSelector").setProperty("currentIndex", 0)
+        find(popup, "audioOutputSelector").setProperty("currentIndex", 0)
+        await click(window, find(popup, "recordAudioProbe"))
+        audio.data(b'\x00\x40' * 1600)
+        assert backend.audioProbe.state == "recording" and microphone.property("active")
+        assert not find(popup, "playAudioProbe").property("enabled")
+        assert find(popup, "audioLevel").property("value") == .5
+        screenshot(window, f"00-audio-record-{width}x{height}")
+        # Exercise the real Qt deadline, not only the explicit stop action.
+        async with asyncio.timeout(6):
+            while backend.audioProbe.busy:
+                await asyncio.sleep(.05)
+        assert backend.audioProbe.hasRecording
+        await click(window, find(popup, "playAudioProbe"))
+        assert backend.audioProbe.state == "playing" and audio.played == b'\x00\x40' * 1600
+        audio.done()
+        screenshot(window, f"00-audio-ready-{width}x{height}")
+        await click(window, find(popup, "recordAudioProbe"))
+        await click(window, find(popup, "closeAudioProbe"))
+        assert not backend.audioProbe.busy and not backend.audioProbe.hasRecording
+    window.setWidth(1200)
+    window.setHeight(800)
     usb.state = RespeakerStatus()
     async with asyncio.timeout(2):
         while microphone.property("connected"):

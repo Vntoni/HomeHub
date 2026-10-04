@@ -25,6 +25,7 @@ ApplicationWindow {
     WaterHeaterControlPopup { id: waterHeaterPopup }
     HeaterControlPopup { id: heaterPopup }
     TemperatureMap { id: tempMapPopup }
+    AudioProbePopup { id: audioPopup; probe: backend ? backend.audioProbe : null }
 
     ColumnLayout {
         anchors.fill: parent
@@ -40,7 +41,9 @@ ApplicationWindow {
             Item { Layout.fillWidth: true }
             MicrophoneStatus {
                 connected: backend ? backend.respeakerConnected : false
-                statusText: backend ? backend.respeakerStatusText : "ReSpeaker niepodłączony"
+                statusText: backend ? (backend.audioProbe.busy ? backend.audioProbe.message : backend.respeakerStatusText) : "ReSpeaker niepodłączony"
+                active: backend ? backend.audioProbe.busy : false
+                onClicked: audioPopup.open()
                 Layout.preferredWidth: 52
                 Layout.preferredHeight: 52
             }

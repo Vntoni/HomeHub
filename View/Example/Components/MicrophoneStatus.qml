@@ -6,6 +6,8 @@ Item {
     objectName: "microphoneStatus"
     property bool connected: false
     property string statusText: "ReSpeaker niepodłączony"
+    property bool active: false
+    signal clicked()
     implicitWidth: 52
     implicitHeight: 52
     Accessible.role: Accessible.Indicator
@@ -26,11 +28,18 @@ Item {
         source: root.connected ? "../Assets/microphone-connected.svg" : "../Assets/microphone-disconnected.svg"
         fillMode: Image.PreserveAspectFit
     }
+    Rectangle {
+        visible: root.active
+        anchors.right: parent.right
+        anchors.top: parent.top
+        width: 12; height: 12; radius: 6
+        color: "#ff6961"
+    }
     MouseArea {
         id: interaction
         anchors.fill: parent
         hoverEnabled: true
-        onClicked: tip.open()
+        onClicked: root.clicked()
     }
     ToolTip {
         id: tip

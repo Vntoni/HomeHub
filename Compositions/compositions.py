@@ -20,6 +20,12 @@ from App.lifecycle import build_with_resources
 from Adapters.respeaker_usb_adapter import RespeakerUsbAdapter
 from App.respeaker_service import RespeakerService
 
+
+def create_audio_probe(on_devices_changed):
+    # Optional native multimedia libraries cannot prevent HomeHub startup.
+    from Adapters.qt_audio_probe import create_audio_probe as create
+    return create(on_devices_changed)
+
 async def build_backend() -> QtHomeBackend:
     # Resources belong to this scope before the first operation that can fail.
     return await build_with_resources(_build_backend)
@@ -190,7 +196,8 @@ async def _build_backend(resources) -> QtHomeBackend:
 
     # --- Qt adapter (QObject) ---
     backend = QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc, sensor_svc,
-                            respeaker=RespeakerService(RespeakerUsbAdapter()))
+                            respeaker=RespeakerService(RespeakerUsbAdapter()),
+                            audio_factory=create_audio_probe)
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
 
     # --- Pogoda Open-Meteo (polling w tle) ---
