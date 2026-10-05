@@ -38,6 +38,7 @@ def adapter(monkeypatch):
             sources.append(self)
         def error(self): return self.code
         def setBufferSize(self, size): pass
+        def bytesAvailable(self): return self.io.size() - self.io.pos()
         def start(self):
             self.io = QBuffer()
             self.io.setData(b'\0' * 16000)
@@ -91,6 +92,24 @@ def test_capture_format_data_error_and_shutdown(adapter):
     probe.stop()
     source.stateChanged.emit(audio.QAudio.State.StoppedState)
     assert failed.call_count == 1 and source.stopped
+
+
+def test_capture_when_pulse_io_does_not_report_available_bytes(adapter, monkeypatch):
+    # Qt 6.6 PulseInputPrivate has readData(), but no bytesAvailable() override.
+    # QAudioSource knows about pending samples while QIODevice reports zero.
+    probe, devices, sources, sinks, changed = adapter
+    received = []
+    probe.record(b'usb-mic'.hex(), received.append, Mock())
+    source = sources[0]
+    monkeypatch.setattr(source.io, "bytesAvailable", lambda: 0)
+    assert source.bytesAvailable() == 16000
+    source.io.readyRead.emit()
+    assert sum(map(len, received)) == 16000
+    assert b''.join(received) == b'\0' * 16000
+    assert max(map(len, received)) <= 8192
+    probe.stop()
+    source.io.readyRead.emit()  # Queued notification after stop is ignored.
+    assert sum(map(len, received)) == 16000
 
 
 def test_playback_uses_explicit_output_memory_and_immediate_reset(adapter):

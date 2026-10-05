@@ -106,7 +106,7 @@ jobs:
 
       - name: Check optional audio imports on Pi (no recording)
         run: |
-          ~/.virtualenvs/Baza_Domowa/bin/python -c 'from Adapters.qt_audio_probe import QtAudioProbe; print("Qt audio adapter import OK; no devices opened")'
+          ~/.virtualenvs/Baza_Domowa/bin/python -c 'from Adapters.qt_audio_probe import QtAudioProbe; from PySide6.QtCore import qVersion; print("Qt audio adapter import OK; Qt=" + qVersion() + "; no devices opened")'
 
       - name: Build with PyInstaller
         run: |
