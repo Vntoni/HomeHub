@@ -117,7 +117,7 @@ class QtHomeBackend(QObject):
 
     def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
                  washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None,
-                 respeaker=None, audio_factory=None):
+                 respeaker=None, audio_factory=None, transcriber=None):
         super().__init__()
         self._climate = climate
         self._boiler = boiler
@@ -127,7 +127,7 @@ class QtHomeBackend(QObject):
         self._respeaker = respeaker
         self._respeaker_status = RespeakerStatus()
         self._respeaker_task = None
-        self._audio_probe = AudioProbeController(audio_factory, self)
+        self._audio_probe = AudioProbeController(audio_factory, self, transcriber=transcriber)
         self._boiler_online = False
         self._command_locks = {}
         self._command_timeout = 45
@@ -226,7 +226,7 @@ class QtHomeBackend(QObject):
         self.washerLastSeenChanged.emit(st.last_seen or "")
 
     async def shutdown(self):
-        self._audio_probe.shutdown()  # Qt objects must close on the UI thread, before device waits.
+        await self._audio_probe.aclose()  # Stop audio and reap STT before device waits.
         if self._shutdown_task is None:
             self._shutdown_task = asyncio.create_task(self._shutdown_resources())
         await asyncio.shield(self._shutdown_task)

@@ -12,7 +12,7 @@ def main():
                      "View/images/images.py", "Tests/ui_smoke.py", "Tests/demo_smoke.py"):
         if not (ROOT / filename).is_file():
             raise RuntimeError(f"Missing project file: {filename}")
-    directories = ("App", "Adapters", "Ports", "Interface", "Compositions", "Config", "Model", "View", "Tests")
+    directories = ("App", "Adapters", "Ports", "Interface", "Compositions", "Config", "Model", "View", "Tests", "Tools")
     for directory in directories:
         for filename in (ROOT / directory).rglob("*.py"):
             ast.parse(filename.read_bytes(), filename=str(filename))

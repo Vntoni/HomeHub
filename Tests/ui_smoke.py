@@ -21,6 +21,7 @@ from App.operations import run_blocking
 from App.respeaker_service import RespeakerService
 from Ports.respeaker import RespeakerStatus
 from Tests.fake_audio_probe import FakeAudioProbe
+from Adapters.whisper_cpp_adapter import Transcription
 import View.images.images  # noqa: F401
 
 
@@ -97,6 +98,12 @@ async def run():
     backend._respeaker = RespeakerService(usb, .02)
     audio = FakeAudioProbe()
     backend.audioProbe._factory = lambda changed: audio
+    class FakeSTT:
+        def available(self): return True
+        async def transcribe(self, pcm, fmt):
+            await asyncio.sleep(.05)
+            return Transcription("Jaka jest temperatura w łazience?", .05)
+    backend.audioProbe._transcriber = FakeSTT()
     engine.rootContext().setContextProperty("backend", backend)
     engine.rootContext().setContextProperty("demoMode", True)
     engine.addImportPath(str(Path(__file__).resolve().parents[1] / "View"))
@@ -152,10 +159,17 @@ async def run():
         await click(window, find(popup, "playAudioProbe"))
         assert backend.audioProbe.state == "playing" and audio.played == b'\x00\x40' * 1600
         audio.done()
+        await click(window, find(popup, "transcribeAudioProbe"))
+        async with asyncio.timeout(2):
+            while backend.audioProbe.busy:
+                await asyncio.sleep(.01)
+        assert find(popup, "transcriptionText").property("text") == "Jaka jest temperatura w łazience?"
+        screenshot(window, f"00-transcription-{width}x{height}")
         screenshot(window, f"00-audio-ready-{width}x{height}")
         await click(window, find(popup, "recordAudioProbe"))
         await click(window, find(popup, "closeAudioProbe"))
         assert not backend.audioProbe.busy and not backend.audioProbe.hasRecording
+        assert not backend.audioProbe.transcript
     window.setWidth(1200)
     window.setHeight(800)
     usb.state = RespeakerStatus()

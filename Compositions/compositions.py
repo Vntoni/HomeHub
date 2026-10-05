@@ -19,6 +19,7 @@ from App.operations import run_blocking
 from App.lifecycle import build_with_resources
 from Adapters.respeaker_usb_adapter import RespeakerUsbAdapter
 from App.respeaker_service import RespeakerService
+from Adapters.whisper_cpp_adapter import WhisperCppAdapter
 
 
 def create_audio_probe(on_devices_changed):
@@ -197,7 +198,8 @@ async def _build_backend(resources) -> QtHomeBackend:
     # --- Qt adapter (QObject) ---
     backend = QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc, sensor_svc,
                             respeaker=RespeakerService(RespeakerUsbAdapter()),
-                            audio_factory=create_audio_probe)
+                            audio_factory=create_audio_probe,
+                            transcriber=WhisperCppAdapter(s.whisper_cli, s.whisper_model))
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
 
     # --- Pogoda Open-Meteo (polling w tle) ---
