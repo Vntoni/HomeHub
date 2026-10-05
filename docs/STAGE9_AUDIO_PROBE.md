@@ -90,3 +90,33 @@ Po potwierdzeniu toru audio kolejnym etapem będzie dobór i pomiar lokalnego
 STT po polsku oraz prototyp odczytujący stan; bez sterowania urządzeniami.
 Nie rozpoczynamy go automatycznie. Ten etap kończy się testami, scaleniem
 na `main`, budowaniem/wdrożeniem i feedbackiem użytkownika.
+
+## Poprawka: brak próbek w starszym Qt PulseAudio (2026-10-05)
+
+P1, `Adapters/qt_audio_probe.py`, callback `read()` w `record()`.
+Użytkownik potwierdził, że `arecord -D plughw:CARD=Lite,DEV=0` nagrywa
+i `aplay` odtwarza głos, podczas gdy HomeHub zgłasza brak próbek.
+To weryfikuje sprzętowy tor ALSA; nie potwierdza jeszcze toru Qt/PulseAudio.
+
+Potwierdzony błąd zgodności w adapterze: odczyt był uzależniony od
+`io.bytesAvailable()`. W [implementacji Qt 6.6](https://github.com/qt/qtmultimedia/blob/v6.6.0/src/multimedia/pulseaudio/qpulseaudiosource.cpp)
+`PulseInputPrivate` implementuje `readData()`, ale nie nadpisuje
+`QIODevice.bytesAvailable()`. Liczbę próbek raportuje `QAudioSource`.
+W rezultacie powiadomienie `readyRead` mogło zostać zignorowane, a bufor
+aplikacji pozostawał pusty mimo dostępnych danych.
+
+Regresja odtwarza osobne liczniki: źródło ma 16000 bajtów, jego QIODevice
+raportuje zero. Przed poprawką: 1 test nieudany, 4 testy adaptera przeszły;
+brak odebranych bajtów. Oczekiwane: odebranie wszystkich próbek w porcjach
+do 8192 bajtów, bez obsługi spóźnionego sygnału po zatrzymaniu.
+Poprawka korzysta z publicznego `QAudioSource.bytesAvailable()` zarówno
+w warunku pętli, jak i przy określaniu rozmiaru odczytu. Pozostawia
+zabezpieczenia limitu nagrania, pustego odczytu i zatrzymania.
+
+Ryzyko regresji ogranicza się do odczytu wejścia audio; testujemy również
+dotychczasowy odbiór, błędy źródła, odsłuch, kontroler i QML. Pierwotna
+atrapa QBuffer raportowała poprawny licznik i nie odwzorowywała tej różnicy
+platformowej. Wersję Qt na Pi wypisuje teraz kontrola importu w deployu.
+To odtworzenie błędu kompatybilności, nie bezpośredni pomiar callbacków
+na Pi; ostateczne potwierdzenie naprawy wymaga ponownego testu w HomeHub.
+Nie zmieniamy firmware ani konfiguracji serwera dźwięku.

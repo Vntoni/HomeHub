@@ -64,9 +64,10 @@ class QtAudioProbe:
             raise RuntimeError("Cannot open audio input")
         self._io = io
         def read():
-            # A bounded chunk per notification; the controller caps total memory.
-            while self._source is source and io.bytesAvailable() > 0:
-                chunk = bytes(io.read(min(8192, io.bytesAvailable())))
+            # Older PulseAudio QIODevices don't override bytesAvailable().
+            # The audio source owns the hardware buffer and its byte count.
+            while self._source is source and source.bytesAvailable() > 0:
+                chunk = bytes(io.read(min(8192, source.bytesAvailable())))
                 if not chunk:
                     break
                 on_data(chunk)
