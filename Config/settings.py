@@ -3,6 +3,7 @@ import sys
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from pathlib import Path
+from Config.voice_runtime import runtime_dir
 
 # Szukaj .env w kilku miejscach (kolejność: binary dir → home → projekt)
 # sys.executable wskazuje na binary gdy uruchamiamy z PyInstaller
@@ -38,6 +39,8 @@ class Settings:
     weather_poll_interval_seconds: int = 3600 # co 30 minut
     # Czujniki Zigbee – lista pokoi (oddzielone przecinkiem w .env)
     sensor_rooms: str = "salon,jadalnia,lazienka"
+    whisper_cli: str = ""
+    whisper_model: str = ""
 
 def get_settings() -> Settings:
     return Settings(
@@ -57,4 +60,6 @@ def get_settings() -> Settings:
         weather_longitude=float(os.getenv("WEATHER_LONGITUDE", "19.803053")),
         weather_poll_interval_seconds=int(os.getenv("WEATHER_POLL_INTERVAL", "3600")),
         sensor_rooms=os.getenv("SENSOR_ROOMS", "salon,jadalnia,lazienka"),
+        whisper_cli=os.getenv("WHISPER_CLI", str(runtime_dir() / 'whisper-cli')),
+        whisper_model=os.getenv("WHISPER_MODEL", str(runtime_dir() / 'ggml-tiny.bin')),
     )

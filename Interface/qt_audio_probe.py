@@ -1,4 +1,5 @@
-"""User-triggered five-second diagnostic. No files, network, STT or commands."""
+"""User-triggered audio and optional local STT. No files, network or commands."""
+import asyncio
 from array import array
 from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer
 
@@ -9,9 +10,12 @@ class AudioProbeController(QObject):
     MAX_SECONDS = 5
     MAX_BYTES = 4 * 1024 * 1024
 
-    def __init__(self, factory=None, parent=None):
+    def __init__(self, factory=None, parent=None, *, transcriber=None):
         super().__init__(parent)
         self._factory = factory
+        self._transcriber = transcriber
+        self._stt_task = None
+        self._transcript = ""
         self._adapter = None
         self._connected = self._opened = self._closed = False
         self._inputs, self._outputs = [], []
@@ -36,9 +40,15 @@ class AudioProbeController(QObject):
     @Property(float, notify=changed)
     def level(self): return self._level
     @Property(bool, notify=changed)
-    def busy(self): return self._state in ("recording", "playing")
+    def busy(self):
+        return self._state in ("recording", "playing", "transcribing") or (self._stt_task is not None and not self._stt_task.done())
     @Property(bool, notify=changed)
     def hasRecording(self): return bool(self._pcm) and self._format is not None
+    @Property(str, notify=changed)
+    def transcript(self): return self._transcript
+    @Property(bool, notify=changed)
+    def canTranscribe(self):
+        return self._transcriber is not None and self._transcriber.available()
 
     def set_connected(self, connected):
         if self._closed or connected == self._connected:
@@ -152,6 +162,9 @@ class AudioProbeController(QObject):
 
     @Slot()
     def stop(self):
+        if self._stt_task is not None and not self._stt_task.done():
+            self.clear()
+            return
         was_recording = self._state == "recording"
         self._stop_transport()
         self._state = "idle"
@@ -187,7 +200,10 @@ class AudioProbeController(QObject):
 
     @Slot()
     def clear(self):
+        if self._stt_task is not None and not self._stt_task.done() and not self._stt_task.cancelling():
+            self._stt_task.cancel()
         self._stop_transport()
+        self._transcript = ""
         self._pcm.clear()
         self._format = None
         self._peak = 0.0
@@ -208,3 +224,46 @@ class AudioProbeController(QObject):
         if self._adapter is not None:
             self._adapter.close()
             self._adapter = None
+
+    @Slot()
+    def transcribe(self):
+        if self._closed or not self._opened or not self.hasRecording or self.busy:
+            return
+        if not self.canTranscribe:
+            self._message = "Lokalny silnik rozpoznawania mowy nie jest dostępny."
+            self.changed.emit()
+            return
+        if self._peak < .001:
+            self._message = "Próbka jest zbyt cicha. Nagraj ponownie i sprawdź Mute."
+            self.changed.emit()
+            return
+        self._transcript = ""
+        self._state, self._message = "transcribing", "Rozpoznawanie po polsku na Raspberry Pi…"
+        generation = self._generation
+        self._stt_task = asyncio.create_task(self._recognize(generation, bytes(self._pcm), self._format))
+        self._stt_task.add_done_callback(lambda _: self.changed.emit() if not self._closed else None)
+        self.changed.emit()
+
+    async def _recognize(self, generation, pcm, fmt):
+        try:
+            result = await self._transcriber.transcribe(pcm, fmt)
+            if generation != self._generation or self._closed:
+                return
+            self._transcript = result.text
+            self._state = "idle"
+            self._message = (f"Rozpoznano w {result.seconds:.1f} s. Tekst nie uruchamia żadnych urządzeń."
+                             if result.text else "Nie rozpoznano mowy. Spróbuj nagrać wyraźniejszą wypowiedź.")
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if generation == self._generation and not self._closed:
+                self._state = "error"
+                self._message = "Rozpoznawanie nie powiodło się lub przekroczyło 60 s. Możesz ponowić próbę."
+        finally:
+            if not self._closed:
+                self.changed.emit()
+
+    async def aclose(self):
+        self.shutdown()
+        if self._stt_task is not None:
+            await asyncio.gather(self._stt_task, return_exceptions=True)

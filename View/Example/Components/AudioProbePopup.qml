@@ -32,7 +32,7 @@ Popup {
       RowLayout {
         id: heading
         Layout.fillWidth: true
-        Label { text: "Test mikrofonu"; font.pixelSize: 24; font.bold: true; Layout.fillWidth: true }
+        Label { text: "Mikrofon i rozpoznawanie mowy"; font.pixelSize: 22; font.bold: true; Layout.fillWidth: true; wrapMode: Text.WordWrap }
         PanelButton { objectName: "closeAudioProbe"; text: "×"; Layout.preferredWidth: 48; onClicked: root.close() }
       }
       ScrollView {
@@ -114,6 +114,25 @@ Popup {
                 objectName: "audioProbeMessage"
                 text: root.probe ? root.probe.message : "Audio niedostępne"
                 color: root.probe && root.probe.state === "error" ? "#ffb5ae" : "#b8e7d7"
+                wrapMode: Text.WordWrap; Layout.fillWidth: true
+            }
+            PanelButton {
+                objectName: "transcribeAudioProbe"
+                text: root.probe && root.probe.state === "transcribing" ? "Rozpoznawanie…" : "Rozpoznaj po polsku"
+                Layout.fillWidth: true
+                enabled: root.probe && root.probe.canTranscribe && root.probe.hasRecording && !root.probe.busy
+                onClicked: root.probe.transcribe()
+            }
+            Label {
+                text: root.probe && !root.probe.canTranscribe ? "Lokalny silnik mowy niedostępny." : "Lokalnie · bez wysyłania audio · bez sterowania urządzeniami"
+                color: "#a9b8c6"; wrapMode: Text.WordWrap; Layout.fillWidth: true
+            }
+            Label {
+                objectName: "transcriptionText"
+                visible: text.length > 0
+                text: root.probe ? root.probe.transcript : ""
+                textFormat: Text.PlainText
+                font.pixelSize: 20
                 wrapMode: Text.WordWrap; Layout.fillWidth: true
             }
             PanelButton {

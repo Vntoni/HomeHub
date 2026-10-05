@@ -112,6 +112,12 @@ jobs:
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python build_app.py
 
+      - name: Prepare pinned optional speech runtime
+        timeout-minutes: 20
+        run: |
+          ~/.virtualenvs/Baza_Domowa/bin/python Tools/install_voice_runtime.py
+          ~/.virtualenvs/Baza_Domowa/bin/python Tools/voice_runtime_smoke.py
+
       - name: Preserve application configuration
         shell: bash
         run: |
