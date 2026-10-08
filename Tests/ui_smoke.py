@@ -242,6 +242,11 @@ async def run():
     screenshot(window, "01-parter")
     await click(window, find(window, "openMap"))
     temperature_map = find(window, "temperatureMap")
+    # opened becomes true after the 200 ms enter transition, which can finish
+    # later than click()'s fixed delay on a loaded CI runner.
+    async with asyncio.timeout(3):
+        while not temperature_map.property("opened"):
+            await asyncio.sleep(.01)
     assert temperature_map.property("opened")
     def map_value(expression):
         evaluator = QQmlExpression(engine.rootContext(), temperature_map, expression)
