@@ -10,10 +10,12 @@ class AudioProbeController(QObject):
     MAX_SECONDS = 5
     MAX_BYTES = 4 * 1024 * 1024
 
-    def __init__(self, factory=None, parent=None, *, transcriber=None):
+    def __init__(self, factory=None, parent=None, *, transcriber=None, answerer=None):
         super().__init__(parent)
         self._factory = factory
         self._transcriber = transcriber
+        self._answerer = answerer
+        self._answer = self._understood = self._question = ""
         self._stt_task = None
         self._transcript = ""
         self._adapter = None
@@ -46,6 +48,14 @@ class AudioProbeController(QObject):
     def hasRecording(self): return bool(self._pcm) and self._format is not None
     @Property(str, notify=changed)
     def transcript(self): return self._transcript
+    @Property(str, notify=changed)
+    def question(self): return self._question
+    @Property(str, notify=changed)
+    def answer(self): return self._answer
+    @Property(str, notify=changed)
+    def understood(self): return self._understood
+    @Property(bool, constant=True)
+    def canAnswer(self): return self._answerer is not None
     @Property(bool, notify=changed)
     def canTranscribe(self):
         return self._transcriber is not None and self._transcriber.available()
@@ -204,6 +214,7 @@ class AudioProbeController(QObject):
             self._stt_task.cancel()
         self._stop_transport()
         self._transcript = ""
+        self._answer = self._understood = self._question = ""
         self._pcm.clear()
         self._format = None
         self._peak = 0.0
@@ -238,6 +249,7 @@ class AudioProbeController(QObject):
             self.changed.emit()
             return
         self._transcript = ""
+        self._answer = self._understood = self._question = ""
         self._state, self._message = "transcribing", "Rozpoznawanie po polsku na Raspberry Pi…"
         generation = self._generation
         self._stt_task = asyncio.create_task(self._recognize(generation, bytes(self._pcm), self._format))
@@ -250,6 +262,9 @@ class AudioProbeController(QObject):
             if generation != self._generation or self._closed:
                 return
             self._transcript = result.text
+            self._question = result.text
+            if result.text and self._answerer is not None:
+                self._answer_question(result.text)
             self._state = "idle"
             self._message = (f"Rozpoznano w {result.seconds:.1f} s. Tekst nie uruchamia żadnych urządzeń."
                              if result.text else "Nie rozpoznano mowy. Spróbuj nagrać wyraźniejszą wypowiedź.")
@@ -262,6 +277,29 @@ class AudioProbeController(QObject):
         finally:
             if not self._closed:
                 self.changed.emit()
+
+    @Slot(str)
+    def editQuestion(self, text):
+        if self._closed or not self._opened or self.busy:
+            return
+        self._question = text[:300]
+        self._answer = self._understood = ""
+        self.changed.emit()
+
+    @Slot()
+    def askQuestion(self):
+        if self._closed or not self._opened or self.busy or self._answerer is None:
+            return
+        self._answer_question(self._question)
+        self.changed.emit()
+
+    def _answer_question(self, text):
+        self._answer = self._understood = ""
+        try:
+            reply = self._answerer(text)
+            self._answer, self._understood = reply.answer, reply.understood
+        except Exception:
+            self._answer = "Odczyt odpowiedzi jest niedostępny. Spróbuj ponownie."
 
     async def aclose(self):
         self.shutdown()

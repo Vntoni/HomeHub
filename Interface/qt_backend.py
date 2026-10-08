@@ -1,6 +1,7 @@
 from PySide6.QtCore import QObject, Signal, Property
 from Ports.respeaker import RespeakerStatus
 from Interface.qt_audio_probe import AudioProbeController
+from Interface.qt_voice_queries import VoiceQueryBridge
 from App.climate_service import ClimateService, confirm_ac_power
 from App.sensor_service import SensorService
 from App.water_heater_service import WaterHeaterService
@@ -127,7 +128,9 @@ class QtHomeBackend(QObject):
         self._respeaker = respeaker
         self._respeaker_status = RespeakerStatus()
         self._respeaker_task = None
-        self._audio_probe = AudioProbeController(audio_factory, self, transcriber=transcriber)
+        self._voice_queries = VoiceQueryBridge(self)
+        self._audio_probe = AudioProbeController(audio_factory, self, transcriber=transcriber,
+                                               answerer=self._voice_queries.answer)
         self._boiler_online = False
         self._command_locks = {}
         self._command_timeout = 45
