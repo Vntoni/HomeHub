@@ -141,6 +141,9 @@ async def run():
         await asyncio.sleep(.1)
         await click(window, microphone)
         popup = find(window, "audioProbePopup")
+        async with asyncio.timeout(3):
+            while not popup.property("opened"):
+                await asyncio.sleep(.01)
         assert popup.property("opened") and not backend.audioProbe.busy
         assert not find(popup, "recordAudioProbe").property("enabled")
         find(popup, "audioInputSelector").setProperty("currentIndex", 0)
@@ -164,12 +167,30 @@ async def run():
             while backend.audioProbe.busy:
                 await asyncio.sleep(.01)
         assert find(popup, "transcriptionText").property("text") == "Jaka jest temperatura w łazience?"
+        assert '21,5 °C' in find(popup, 'voiceAnswer').property('text')
+        assert 'Łazienka' in find(popup, 'voiceUnderstood').property('text')
+        question = find(popup, 'voiceQuestion')
+        edit = QQmlExpression(engine.rootContext(), question,
+                             "text = 'Wilgotnosc w lazience'; textEdited()")
+        edit.evaluate()
+        assert not edit.hasError(), edit.error().toString()
+        assert not backend.audioProbe.answer
+        await click(window, find(popup, 'askVoiceQuestion'))
+        assert '48,0 %' in find(popup, 'voiceAnswer').property('text')
+        answer_item = find(popup, 'voiceAnswer')
+        answer_top = answer_item.mapToScene(QPointF(0, 0)).y()
+        assert answer_item.height() >= answer_item.implicitHeight()
+        assert 90 <= answer_top and answer_top + answer_item.height() <= height - 24, (
+            width, height, answer_top, answer_item.height(), answer_item.implicitHeight())
+        assert backend.audioProbe.transcript == 'Jaka jest temperatura w łazience?'
+        screenshot(window, f"00-voice-answer-{width}x{height}")
         screenshot(window, f"00-transcription-{width}x{height}")
         screenshot(window, f"00-audio-ready-{width}x{height}")
         await click(window, find(popup, "recordAudioProbe"))
         await click(window, find(popup, "closeAudioProbe"))
         assert not backend.audioProbe.busy and not backend.audioProbe.hasRecording
         assert not backend.audioProbe.transcript
+        assert not backend.audioProbe.answer and not backend.audioProbe.question
     window.setWidth(1200)
     window.setHeight(800)
     usb.state = RespeakerStatus()
