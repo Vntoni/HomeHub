@@ -44,11 +44,37 @@ Opcjonalne ustawienia obecnego loadera `.env`: `WHISPER_CLI`, `WHISPER_MODEL`
 panel wyłącza przycisk STT i pokazuje informację.
 
 `Tools/voice_runtime_smoke.py` uruchamia rzeczywisty proces na Pi, na pętli
-qasync używanej przez aplikację, z syntetyczną ciszą stereo 48 kHz / 5 sekund.
-Sprawdza też resampling i wypisuje czas oraz maksymalne RSS procesu potomnego.
+qasync używanej przez aplikację, najpierw z publiczną próbką mowy JFK (5 s),
+potem z syntetyczną ciszą stereo 48 kHz / 5 sekund. Próbkę mowy przekształca
+do stereo 48 kHz w pamięci i wymaga co najmniej trzech słów wyniku.
+Pusty wynik zatrzymuje wdrożenie przed podmianą aplikacji.
+Test sprawdza też resampling i wypisuje czas oraz maksymalne RSS procesu potomnego.
 Nie otwiera mikrofonu, nie ładuje konfiguracji urządzeń ani nie używa nagrań
 użytkownika. To test działania i orientacyjny pomiar kosztu, nie pomiar
 skuteczności polskiej mowy lub percentyli latencji.
+
+## HH-STT-01 — pusty tekst mimo poprawnego zakończenia rozpoznawania (P1)
+
+Objaw zgłoszony: każda nagrana wypowiedź kończy się komunikatem „Nie rozpoznano
+mowy”. Dotyczy `WhisperCppAdapter.transcribe` i testu `Tools/voice_runtime_smoke.py`.
+
+Przyczyna potwierdzona w [kodzie przypiętego CLI](https://github.com/ggml-org/whisper.cpp/blob/v1.9.4/examples/cli/cli.cpp):
+`-f -` ustawia również domyślny cel wyjścia na `-`. W tym trybie CLI wyłącza
+callback wypisujący segmenty. Bez `-otxt` żaden format wyjścia nie jest włączony,
+więc proces kończy się kodem 0, lecz stdout pozostaje pusty. To nie dowodzi,
+że model nie zrozumiał nagrania.
+
+Odtworzenie: przesłać WAV z mową do starego adaptera przez stdin. Oczekiwany
+jest tekst; otrzymywany jest pusty wynik. Regresja offline odtwarza reguły
+wyjścia CLI. Poprawka jawnie ustawia `-otxt -of -`: tekst na stdout,
+bez plików z nagraniami lub transkrypcją. Ryzyko ograniczone do odbioru wyniku
+STT; konfiguracja mikrofonu, model, język i sterowanie urządzeniami bez zmian.
+
+Poprzedni test rzeczywistego silnika używał wyłącznie ciszy i dopuszczał pusty
+tekst, dlatego nie wykrywał błędu. Nowy test wymaga tekstu ze znanej próbki
+mowy (pochodzenie w `Tests/fixtures/audio/README.md`), a osobny test offline
+sprawdza, że pusty wynik tej próby blokuje wdrożenie. Nagrania użytkownika
+nadal nie są zapisywane ani wykorzystywane przez testy.
 
 ## Testy
 
