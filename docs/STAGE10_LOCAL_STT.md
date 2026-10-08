@@ -76,6 +76,17 @@ mowy (pochodzenie w `Tests/fixtures/audio/README.md`), a osobny test offline
 sprawdza, że pusty wynik tej próby blokuje wdrożenie. Nagrania użytkownika
 nadal nie są zapisywane ani wykorzystywane przez testy.
 
+Weryfikacja poprawki (8 października 2026): lokalny test rzeczywistego
+whisper.cpp 1.9.4 z modelem tiny o sprawdzonej sumie SHA256 odtworzył pusty
+wynik przed poprawką. Po zmianie zwrócił wielowyrazowy tekst tej samej próbki
+(1,79 s na komputerze deweloperskim; nie jest to pomiar Raspberry Pi).
+Pełne 403 testy offline i 8 scenariuszy QML/zamykania przeszły lokalnie oraz
+w CI PR #27. Pierwsze CI na main przeszło 403 testy, ale zatrzymało się na
+sprawdzeniu `temperatureMap.opened` przed końcem animacji. PR #28 zastąpił
+stałe oczekiwanie w tym miejscu warunkiem z limitem 3 s; cały zestaw CI
+przeszedł ponownie. Żadnego testu nie wyłączono. Wdrożenie nadal wymaga
+testu rzeczywistego runtime na Pi przed zastąpieniem aplikacji.
+
 ## Testy
 
 OfflineGuard pozostaje włączony. Testy jednostkowe używają fake procesu:
