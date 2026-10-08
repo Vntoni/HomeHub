@@ -83,6 +83,30 @@ async def test_worker_uses_stdin_polish_bounded_threads_and_clean_env(worker, mo
     p.stdin.close.assert_called_once()
 
 
+async def test_stdin_inference_explicitly_emits_text_to_stdout(worker):
+    # whisper.cpp 1.9.4 derives its output name from input '-'. That disables
+    # the segment callback; without -otxt it exits 0 but returns no text.
+    adapter, _ = worker(Process())
+    async def cli(*args, **kwargs):
+        output_name = args[args.index('-of') + 1] if '-of' in args else args[args.index('-f') + 1]
+        emits_text = output_name == '-' and '-otxt' in args
+        return Process(output='Jaka jest temperatura?'.encode() if emits_text else b'')
+    adapter._spawn = cli
+    result = await adapter.transcribe(b'\0\x40' * 100, PcmFormat(16000, 1))
+    assert result.text == 'Jaka jest temperatura?'
+
+
+async def test_deployment_smoke_rejects_successful_but_empty_transcription(monkeypatch, tmp_path):
+    from Tools import voice_runtime_smoke as smoke
+    worker = Mock(transcribe=AsyncMock(return_value=Transcription('', .1)))
+    monkeypatch.setattr(smoke, 'WhisperCppAdapter', Mock(return_value=worker))
+    with pytest.raises(RuntimeError, match='no usable transcript'):
+        await smoke.main(tmp_path)
+    pcm, fmt = worker.transcribe.call_args.args
+    assert fmt == PcmFormat(48000, 2)
+    assert len(pcm) == fmt.bytes_per_second * 5 and any(pcm)
+
+
 @pytest.mark.parametrize('mode', ['timeout', 'cancel', 'overflow', 'error'])
 async def test_worker_failure_and_cancellation_reap_process(worker, mode):
     process = Process(output=b'x' * 20000 if mode == 'overflow' else b'',

@@ -63,8 +63,10 @@ class WhisperCppAdapter:
         if not self.available():
             raise FileNotFoundError("Local speech runtime unavailable")
         audio = wav_bytes(pcm, fmt)
+        # With stdin input, whisper.cpp disables its segment-print callback.
+        # Explicit text output is required even when the process exits cleanly.
         args = [str(self.executable), '-m', str(self.model), '-l', 'pl', '-t', '2',
-                '-ng', '-nt', '-np', '-f', '-']
+                '-ng', '-nt', '-np', '-otxt', '-of', '-', '-f', '-']
         if sys.platform.startswith('linux'):
             args = ['/usr/bin/nice', '-n', '10', *args]
         # In particular do not inherit device passwords, proxy settings or the
