@@ -1,4 +1,6 @@
 from typing import Any
+from copy import deepcopy
+from inspect import iscoroutinefunction
 from pyairstage.constants import FanSpeed
 from Ports.ac import ACUnitPort
 from pyairstage.airstageAC import AirstageAC, ApiCloud, BooleanDescriptors
@@ -10,7 +12,24 @@ class AirstageACAdapter(ACUnitPort):
         self._impl = impl_cls(device_id, api_cloud)   # np. pyairstage.AirstageAC
 
     async def refresh(self) -> None:
-        await self._impl.refresh_parameters()
+        refresh = self._impl.refresh_parameters
+        if iscoroutinefunction(refresh):
+            # Preserve SDKs with the older asynchronous refresh contract.
+            await refresh()
+            return
+        # pyairstage 3.2.2 fetches devices asynchronously but parses a supplied
+        # payload synchronously. Its no-argument parser cannot perform that I/O.
+        devices = await self._api.get_devices()
+        if not isinstance(devices, dict) or self.device_id not in devices:
+            raise ValueError("AC missing from device response")
+        data = devices[self.device_id]
+        if not isinstance(data, dict) or not isinstance(data.get("parameters"), list):
+            raise ValueError("Invalid AC parameter response")
+        if any(not isinstance(p, dict) or "name" not in p or "value" not in p
+               for p in data["parameters"]):
+            raise ValueError("Invalid AC parameter entry")
+        # The parser modifies the mapping; keep the transport response untouched.
+        refresh(data=deepcopy(data))
 
     async def turn_on(self) -> None:
         await self._impl.turn_on()
@@ -65,5 +84,4 @@ class AirstageACAdapter(ACUnitPort):
 
     async def set_operation_mode(self, mode: str) -> None:
         await self._impl.set_operation_mode(mode)
-
 
