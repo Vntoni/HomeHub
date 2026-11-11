@@ -1,6 +1,10 @@
 import json
+import logging
+import math
 import threading
 import paho.mqtt.client as mqtt
+
+logger = logging.getLogger(__name__)
 
 
 class ZigbeeSensorAdapter:
@@ -45,11 +49,30 @@ class ZigbeeSensorAdapter:
     def _on_message(self, client, userdata, msg):
         if msg.topic == self._topic:
             try:
-                self._data = json.loads(msg.payload)
-                if self._on_update:
-                    self._on_update(self._name, self._data)
-            except json.JSONDecodeError:
-                print(f"[ZigbeeSensor:{self._name}] Invalid JSON payload")
+                data = json.loads(msg.payload)
+                if not isinstance(data, dict):
+                    raise ValueError("Expected a JSON object")
+                for key in ("temperature", "humidity", "battery", "linkquality"):
+                    if key not in data:
+                        continue
+                    value = data[key]
+                    if isinstance(value, bool) or not math.isfinite(float(value)):
+                        raise ValueError("Expected a finite measurement")
+                    if key == "linkquality":
+                        int(value)  # Match the public getter's accepted values.
+            except (ValueError, TypeError, OverflowError):
+                logger.warning("Invalid MQTT measurement for %s", self._name)
+                return
+
+            # Publish only after validating all fields; retain the last valid cache
+            # if decoding or conversion failed. Partial payload semantics stay intact.
+            self._data = data
+            if self._on_update:
+                try:
+                    self._on_update(self._name, data)
+                except Exception as exc:
+                    logger.error("Sensor callback failed for %s (%s)",
+                                 self._name, type(exc).__name__)
 
     # --- SensorPort interface ---
 
@@ -72,4 +95,3 @@ class ZigbeeSensorAdapter:
     def get_link_quality(self) -> int:
         """Zwraca jakość sygnału Zigbee (lqi)"""
         return int(self._data.get("linkquality", 0))
-
