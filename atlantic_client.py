@@ -217,12 +217,10 @@ class AtlanticCozytouchClient:
             # Obsługa wygasłego tokena (401)
             if response.status_code == 401:
                 print(f"[Atlantic API] Got 401 in set_capability (cap {capability_id}), token expired")
-                if self._handle_auth_error():
-                    # Retry po ponownym zalogowaniu
-                    headers["Authorization"] = f"Bearer {self.access_token}"
-                    response = requests.post(url, json=payload, headers=headers, timeout=30)
-                else:
-                    return False
+                self._handle_auth_error()
+                # Refresh authentication for a future explicit user action, but
+                # never repeat a device write automatically.
+                return False
 
             if response.status_code == 201:
                 # Zwraca execution ID
@@ -284,10 +282,6 @@ class AtlanticCozytouchClient:
                                 else:
                                     # Nieznany stan
                                     print(f"  Unknown state {state} for execution {execution_id}, waiting...")
-                                    # Jeśli to ostatnia próba, uznajmy za sukces (może API jest wolne)
-                                    if attempt >= max_attempts - 1:
-                                        print(f"  Max attempts reached, assuming success for execution {execution_id}")
-                                        return True
                                     continue
                             except Exception as parse_error:
                                 # Błąd parsowania - czekaj
@@ -299,8 +293,9 @@ class AtlanticCozytouchClient:
                     # Zwróć False - nie możemy być pewni czy się wykonało
                     return False
 
-                # Brak execution ID - ale status 201, uznajemy za sukces
-                return True
+                # HTTP 201 only confirms acceptance, not completed execution.
+                print("Execution ID missing; command completion is unconfirmed")
+                return False
             else:
                 print(f"Set capability failed: {response.status_code}")
                 print(f"Response: {response.text}")
