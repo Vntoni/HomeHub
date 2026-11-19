@@ -131,6 +131,27 @@ jobs:
             done
           fi
 
+      - name: Configure optional Tauron account
+        env:
+          ELICZNIK_USERNAME: ${{ secrets.ELICZNIK_USERNAME }}
+          ELICZNIK_PASSWORD: ${{ secrets.ELICZNIK_PASSWORD }}
+          ELICZNIK_SITE: ${{ secrets.ELICZNIK_SITE }}
+        run: |
+          ~/.virtualenvs/Baza_Domowa/bin/python - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          username, password = os.getenv("ELICZNIK_USERNAME"), os.getenv("ELICZNIK_PASSWORD")
+          if username and password:
+              path = Path.home() / ".config/bazadomowa/energy.json"
+              path.parent.mkdir(parents=True, exist_ok=True)
+              temporary = path.with_suffix(".tmp")
+              fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+              with os.fdopen(fd, "w") as stream:
+                  json.dump({"username": username, "password": password,
+                             "site": os.getenv("ELICZNIK_SITE") or None}, stream)
+              temporary.replace(path)
+          PYTHON
+
       - name: Stop app service before replacing binary
         run: systemctl --user stop bazadomowa
 

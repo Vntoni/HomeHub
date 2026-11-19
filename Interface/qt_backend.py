@@ -1,4 +1,5 @@
 from PySide6.QtCore import QObject, Signal, Property
+from Interface.qt_energy import EnergyController
 from Ports.respeaker import RespeakerStatus
 from Interface.qt_audio_probe import AudioProbeController
 from Interface.qt_voice_queries import VoiceQueryBridge
@@ -56,6 +57,10 @@ class ACSettingsBlocked(ValueError):
 
 
 class QtHomeBackend(QObject):
+    @Property(QObject, constant=True)
+    def energy(self):
+        return self._energy
+
     @Property(QObject, constant=True)
     def audioProbe(self):
         return self._audio_probe
@@ -118,8 +123,9 @@ class QtHomeBackend(QObject):
 
     def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
                  washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None,
-                 respeaker=None, audio_factory=None, transcriber=None):
+                 respeaker=None, audio_factory=None, transcriber=None, energy_service=None):
         super().__init__()
+        self._energy = EnergyController(energy_service, self)
         self._climate = climate
         self._boiler = boiler
         self._washer = washer
@@ -255,6 +261,7 @@ class QtHomeBackend(QObject):
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             errors.extend(result for result in results if isinstance(result, Exception))
+        await attempt(self._energy.aclose)
         await attempt(self._operations.close)
         if self._washer:
             await attempt(self._washer.stop)
@@ -273,6 +280,7 @@ class QtHomeBackend(QObject):
 
     # --- init/refresh
     async def init_all(self):
+        self._energy.start()
         self._start_respeaker_monitor()
         if self._washer:
             await self._washer.start(self._on_washer_snapshot)

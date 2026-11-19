@@ -147,3 +147,42 @@ shows its readback after saving. Unchanged intermediate readings are preserved;
 fan-only mode does not send a target-temperature command. Unit tests exercise
 the real pyairstage encoding with a fake transport; live-device verification is
 still required. Reference: [pyairstage fan constants](https://github.com/danielkaldheim/pyairstage/blob/master/pyairstage/constants.py).
+
+
+### Zużycie prądu — Tauron eLicznik
+
+Przycisk **Prąd** otwiera panel z godzinami wybranego dnia, dniami miesiąca
+oraz miesiącami roku. Strzałki zmieniają okres; historia obejmuje 12 miesięcy
+kalendarzowych (bieżący i 11 poprzednich), do wczoraj. Wyświetlany jest pobór
+z sieci, nie moc chwilowa, koszt, zużycie własne PV ani energia po bilansowaniu.
+Brak odczytu to „Brak danych”, a nie zero. Gwiazdka oznacza niepełne dane.
+Bieżący miesiąc obejmuje tylko dni do wczoraj. Suma dotyczy dostępnych odczytów.
+
+W działającej aplikacji pobieranie następuje około 12:00 Europe/Warsaw
+(z kontrolą co minutę), niezależnie od otwarcia panelu. Start po południu nadrabia
+pominiętą aktualizację. Jeśli aplikacja/RPi jest wyłączona, pobieranie czeka na
+uruchomienie. Nieudane automatyczne pobrania są ponawiane co 30 minut do północy.
+Przycisk **Odśwież** działa niezależnie od harmonogramu. Pobieranie odbywa się
+poza wątkiem GUI; równoległe odświeżenia są łączone. Zamknięcie aplikacji czeka
+na zakończenie trwającego pobierania (poszczególne żądania HTTP mają timeout).
+Tauron może publikować dane z opóźnieniem.
+
+Konfiguracja: `ELICZNIK_USERNAME`, `ELICZNIK_PASSWORD`, opcjonalnie
+`ELICZNIK_SITE` w prywatnym `.env`, albo plik
+`~/.config/bazadomowa/energy.json` z polami `username`, `password`, `site`.
+Plik powinien mieć prawa 600. `site` wybiera punkt poboru zgodnie z biblioteką;
+bez niego używany jest domyślny punkt konta. Obsługiwane są XDG_CONFIG_HOME
+oraz XDG_CACHE_HOME. Hasła nie należą do repozytorium.
+W CI/CD opcjonalne sekrety repozytorium o tych samych nazwach zapisują prywatny
+plik na Raspberry podczas wdrożenia; brak sekretów zachowuje istniejący plik.
+
+Ostatnia udana historia jest atomowo zapisywana w
+`~/.cache/bazadomowa/energy.json`; awaria pobierania jej nie usuwa.
+Demo korzysta z wygenerowanych danych i nie czyta danych konta ani sieci.
+Integracja używa [mlesniew/elicznik](https://github.com/mlesniew/elicznik),
+przypiętego do commita w requirements.txt. Adapter dodaje timeouty logowania
+oraz zachowuje powtórzoną godzinę jesienną w CSV (biblioteka domyślnie ją scala).
+Godziny zmiany czasu dotyczą polskiej strefy czasowej.
+
+Testy: `python Tests/run_offline.py` obejmuje agregację, brak danych, zmianę
+czasu, harmonogram, błędy, cache, zamykanie i interakcje panelu QML.

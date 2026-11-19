@@ -23,3 +23,6 @@ pyinstaller>=6.0.0
 # MQTT sensors and BLE washer (imported at runtime)
 paho-mqtt>=2.0.0
 bleak>=0.21.0
+
+# Tauron eLicznik: pinned upstream Keycloak login support
+elicznik @ git+https://github.com/mlesniew/elicznik.git@706f07b602d2eb13132401b1d13b28d16cccf7e5

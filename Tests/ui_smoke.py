@@ -74,6 +74,8 @@ async def click(window, item):
             await asyncio.sleep(0.05)
         ancestor = ancestor.parentItem()
     point = item.mapToScene(QPointF(item.width() / 2, item.height() / 2)).toPoint()
+    loop.call_soon(lambda: QTest.mouseMove(window, point))
+    await asyncio.sleep(.1)
     loop.call_soon(lambda: QTest.mouseClick(window, Qt.LeftButton, Qt.NoModifier, point))
     await asyncio.sleep(0.25)
     if item.objectName() == "applySettings":
@@ -243,6 +245,27 @@ async def run():
         for service, name, original_method in saved_writes:
             setattr(service, name, original_method)
     screenshot(window, "00-start")
+    await click(window, find(window, "openEnergy"))
+    energy_popup = find(window, "energyPopup")
+    assert energy_popup.property("opened")
+    assert len(backend.energy.rows) in (23, 24)
+    screenshot(window, "energy-hours")
+    await click(window, find(window, "energyDays"))
+    assert backend.energy.mode == "day"
+    await click(window, find(window, "energyMonths"))
+    assert backend.energy.mode == "month"
+    await click(window, find(window, "refreshEnergy"))
+    while backend.energy.busy:
+        await asyncio.sleep(.05)
+    assert "Pobrano" in backend.energy.message
+    for ew, eh in [(800, 480), (1280, 720)]:
+        window.resize(ew, eh)
+        await asyncio.sleep(.2)
+        assert energy_popup.property("width") <= ew
+        screenshot(window, f"energy-{ew}x{eh}")
+    await click(window, find(window, "closeEnergy"))
+    window.resize(1200, 800)
+    await asyncio.sleep(.2)
     salon = find(window, "card_Salon")
     # Failure preserves the last displayed boiler values and marks them stale.
     boiler_card = find(window, "card_boiler")

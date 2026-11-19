@@ -24,6 +24,7 @@ ApplicationWindow {
     ACControlPopup { id: acPopup }
     WaterHeaterControlPopup { id: waterHeaterPopup }
     HeaterControlPopup { id: heaterPopup }
+    EnergyPopup { id: energyPopup; energy: backend ? backend.energy : null }
     TemperatureMap { id: tempMapPopup }
     AudioProbePopup { id: audioPopup; probe: backend ? backend.audioProbe : null }
 
@@ -39,6 +40,12 @@ ApplicationWindow {
                 Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : "Temperatura i urządzenia"; color: "#a9b8c6"; font.pixelSize: 14 }
             }
             Item { Layout.fillWidth: true }
+            PanelButton {
+                objectName: "openEnergy"
+                text: "Prąd"
+                onClicked: energyPopup.open()
+                Accessible.name: "Statystyki zużycia prądu"
+            }
             MicrophoneStatus {
                 connected: backend ? backend.respeakerConnected : false
                 statusText: backend ? (backend.audioProbe.busy ? backend.audioProbe.message : backend.respeakerStatusText) : "ReSpeaker niepodłączony"
