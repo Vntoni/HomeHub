@@ -47,6 +47,7 @@ args = [
     "--hidden-import=PySide6.QtQuick",
     "--hidden-import=PySide6.QtQuickControls2",
     "--hidden-import=qasync",
+    "--hidden-import=elicznik",
     "--hidden-import=pyairstage",
     "--hidden-import=ariston",
     "--hidden-import=requests",

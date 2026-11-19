@@ -12,3 +12,5 @@ TemperatureStepper 1.0 TemperatureStepper.qml
 SettingsPopup 1.0 SettingsPopup.qml
 Accontrol 1.0 Accontrol.qml
 PanelButton 1.0 PanelButton.qml
+
+EnergyPopup 1.0 EnergyPopup.qml

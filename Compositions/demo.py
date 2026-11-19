@@ -1,3 +1,4 @@
+from App.energy_service import demo_energy
 """In-memory demo services. No credentials, network, MQTT, BLE or database."""
 from qasync import asyncSlot
 from Interface.qt_backend import QtHomeBackend
@@ -85,4 +86,5 @@ class DemoBackend(QtHomeBackend):
 async def build_demo_backend():
     return DemoBackend(DemoClimate(), DemoBoiler(), None, DemoHeaters(),
                          SensorService({room: DemoSensor()
-                                        for room in ("salon", "jadalnia", "lazienka")}))
+                                        for room in ("salon", "jadalnia", "lazienka")}),
+                         energy_service=demo_energy())

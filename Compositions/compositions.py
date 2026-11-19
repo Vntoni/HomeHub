@@ -1,6 +1,7 @@
 # src/home/composition.py
 import asyncio
 import aiohttp
+from App.energy_service import production_energy
 from Ports.sensor import sensor_measurement, configured_sensor_rooms
 import ariston
 from pyairstage.airstageAC import AirstageAC, ApiCloud
@@ -199,7 +200,8 @@ async def _build_backend(resources) -> QtHomeBackend:
     backend = QtHomeBackend(climate, boiler_svc, washer_svc, heater_svc, sensor_svc,
                             respeaker=RespeakerService(RespeakerUsbAdapter()),
                             audio_factory=create_audio_probe,
-                            transcriber=WhisperCppAdapter(s.whisper_cli, s.whisper_model))
+                            transcriber=WhisperCppAdapter(s.whisper_cli, s.whisper_model),
+                            energy_service=production_energy())
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
 
     # --- Pogoda Open-Meteo (polling w tle) ---
