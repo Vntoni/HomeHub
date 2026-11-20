@@ -1,5 +1,6 @@
-"""User-triggered audio and optional local STT. No files, network or commands."""
+"""User-triggered audio and optional local STT. Optional asynchronous local intent interpretation."""
 import asyncio
+import inspect
 from array import array
 from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer
 
@@ -60,6 +61,12 @@ class AudioProbeController(QObject):
     def speechProfile(self):
         label = getattr(self._transcriber, "profile_label", "")
         return label if isinstance(label, str) else ""
+
+    @Property(str, constant=True)
+    def answerProfile(self):
+        owner = getattr(self._answerer, '__self__', None)
+        return ('Lokalny AI · LFM3 · tylko odczyt' if getattr(owner, 'agent', None)
+                else 'Podstawowe pytania · tylko odczyt')
 
     @Property(bool, notify=changed)
     def canTranscribe(self):
@@ -217,6 +224,9 @@ class AudioProbeController(QObject):
     def clear(self):
         if self._stt_task is not None and not self._stt_task.done() and not self._stt_task.cancelling():
             self._stt_task.cancel()
+        owner = getattr(self._answerer, "__self__", None)
+        if hasattr(owner, "reset"):
+            owner.reset()
         self._stop_transport()
         self._transcript = ""
         self._answer = self._understood = self._question = ""
@@ -269,7 +279,9 @@ class AudioProbeController(QObject):
             self._transcript = result.text
             self._question = result.text
             if result.text and self._answerer is not None:
-                self._answer_question(result.text)
+                await self._resolve_answer(self._answerer(result.text), generation)
+                if generation != self._generation or self._closed:
+                    return
             self._state = "idle"
             self._message = (f"Rozpoznano w {result.seconds:.1f} s. Tekst nie uruchamia żadnych urządzeń."
                              if result.text else "Nie rozpoznano mowy. Spróbuj nagrać wyraźniejszą wypowiedź.")
@@ -295,16 +307,41 @@ class AudioProbeController(QObject):
     def askQuestion(self):
         if self._closed or not self._opened or self.busy or self._answerer is None:
             return
-        self._answer_question(self._question)
-        self.changed.emit()
-
-    def _answer_question(self, text):
         self._answer = self._understood = ""
         try:
-            reply = self._answerer(text)
-            self._answer, self._understood = reply.answer, reply.understood
+            reply = self._answerer(self._question)
+            if inspect.isawaitable(reply):
+                self._message = "Interpretowanie pytania lokalnie na Raspberry Pi…"
+                self._stt_task = asyncio.create_task(self._resolve_answer(reply, self._generation))
+                def finished(_):
+                    # If closed before the task's first turn, the inner coroutine
+                    # has never been awaited and must be explicitly closed.
+                    if inspect.iscoroutine(reply) and inspect.getcoroutinestate(reply) == inspect.CORO_CREATED:
+                        reply.close()
+                    if not self._closed:
+                        self.changed.emit()
+                self._stt_task.add_done_callback(finished)
+            else:
+                self._answer, self._understood = reply.answer, reply.understood
         except Exception:
             self._answer = "Odczyt odpowiedzi jest niedostępny. Spróbuj ponownie."
+        self.changed.emit()
+
+    async def _resolve_answer(self, reply, generation):
+        try:
+            if inspect.isawaitable(reply):
+                reply = await reply
+            if generation == self._generation and not self._closed:
+                self._answer, self._understood = reply.answer, reply.understood
+                self._message = "Odpowiedź gotowa."
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if generation == self._generation and not self._closed:
+                self._answer = "Odczyt odpowiedzi jest niedostępny. Spróbuj ponownie."
+        finally:
+            if not self._closed:
+                self.changed.emit()
 
     async def aclose(self):
         self.shutdown()

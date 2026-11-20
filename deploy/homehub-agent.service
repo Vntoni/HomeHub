@@ -1,0 +1,20 @@
+[Unit]
+Description=HomeHub local LFM3 intent model
+After=default.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/homehub/agent/llama-b11960/build/bin/llama-server --model %h/.local/share/homehub/agent/LFM3-1.7B-Q4_K_M.gguf --alias homehub-local --host 127.0.0.1 --port 9081 --ctx-size 2048 --threads 3 --threads-batch 3 --parallel 1 --n-gpu-layers 0 --jinja --reasoning-budget 0
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+Nice=5
+MemoryHigh=1700M
+MemoryMax=2200M
+MemorySwapMax=0
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

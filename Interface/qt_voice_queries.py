@@ -4,9 +4,14 @@ from App.voice_queries import ReadOnlyHomeQueries
 
 
 class VoiceQueryBridge(QObject):
-    def __init__(self, backend):
+    def __init__(self, backend, local_agent_enabled=False):
         super().__init__(backend)
         self.cache = ReadOnlyHomeQueries()
+        self.agent = None
+        if local_agent_enabled:
+            from App.local_agent import LocalHomeAgent
+            from Adapters.local_intent import LocalIntentClient
+            self.agent = LocalHomeAgent(self.cache, LocalIntentClient())
         backend.sensorTempChanged.connect(self.temperature)
         backend.sensorHumidityChanged.connect(self.humidity)
         backend.tempIndoorChanged.connect(self.indoor)
@@ -37,4 +42,8 @@ class VoiceQueryBridge(QObject):
     def jadalnia_online(self, online): self.cache.online('jadalnia', online)
 
     def answer(self, text):
-        return self.cache.answer(text)
+        return self.agent.answer(text) if self.agent else self.cache.answer(text)
+
+    def reset(self):
+        if self.agent:
+            self.agent.reset()

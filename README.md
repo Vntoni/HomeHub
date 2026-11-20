@@ -194,3 +194,5 @@ HomeHub. Panel pokazuje nazwę aktywnego modelu. Istniejące WHISPER_CLI i
 WHISPER_MODEL w prywatnym .env nadal mają pierwszeństwo. Porównanie jakości,
 obsługa błędów oraz plan rozmowy z danymi domu i TTS:
 [Polska mowa i droga do rozmowy z HomeHub](docs/POLISH_SPEECH_QUALITY.md).
+
+Opcjonalny lokalny agent LFM3 dla Raspberry Pi 5: [instalacja i benchmark](docs/LOCAL_AGENT_PI.md).
