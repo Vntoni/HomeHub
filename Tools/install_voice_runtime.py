@@ -11,7 +11,7 @@ import tempfile
 import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from Config.voice_runtime import MODEL_SHA256, MODEL_URL, SOURCE_SHA256, SOURCE_URL, runtime_dir
+from Config.voice_runtime import MODEL_FILENAME, MODEL_MAX_BYTES, MODEL_SHA256, MODEL_URL, SOURCE_SHA256, SOURCE_URL, runtime_dir
 
 
 def digest(path):
@@ -35,7 +35,7 @@ def install():
     target = runtime_dir()
     if target.exists():
         manifest = json.loads((target / 'manifest.json').read_text())
-        if (digest(target / 'ggml-tiny.bin') != MODEL_SHA256
+        if (digest(target / MODEL_FILENAME) != MODEL_SHA256
                 or digest(target / 'whisper-cli') != manifest['executable_sha256']):
             raise ValueError("Installed runtime differs from verified files")
         print("Verified existing optional voice runtime", flush=True)
@@ -75,14 +75,14 @@ def install():
         ready = staging / 'ready'
         ready.mkdir()
         shutil.copy2(build / 'bin/whisper-cli', ready / 'whisper-cli')
-        download(MODEL_URL, ready / 'ggml-tiny.bin', MODEL_SHA256, 80 * 1024 * 1024)
+        download(MODEL_URL, ready / MODEL_FILENAME, MODEL_SHA256, MODEL_MAX_BYTES)
         shutil.copy2(source / 'LICENSE', ready / 'LICENSE-whisper.cpp')
         (ready / 'manifest.json').write_text(json.dumps({
             'version': '1.9.4', 'source_sha256': SOURCE_SHA256, 'model_sha256': MODEL_SHA256,
             'executable_sha256': digest(ready / 'whisper-cli'),
         }, indent=2))
         os.rename(ready, target)
-        print("Installed optional whisper.cpp 1.9.4 + multilingual tiny", flush=True)
+        print("Installed optional whisper.cpp 1.9.4 + multilingual base", flush=True)
 
 
 if __name__ == '__main__':

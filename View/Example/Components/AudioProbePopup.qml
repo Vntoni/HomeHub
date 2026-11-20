@@ -130,7 +130,7 @@ Popup {
                 onClicked: root.probe.transcribe()
             }
             Label {
-                text: root.probe && !root.probe.canTranscribe ? "Lokalny silnik mowy niedostępny." : "Lokalnie · bez wysyłania audio · bez sterowania urządzeniami"
+                text: root.probe && !root.probe.canTranscribe ? "Lokalny silnik mowy niedostępny." : "Lokalnie · bez wysyłania audio · bez sterowania urządzeniami\n" + (root.probe ? root.probe.speechProfile : "")
                 color: "#a9b8c6"; wrapMode: Text.WordWrap; Layout.fillWidth: true
             }
             Label {

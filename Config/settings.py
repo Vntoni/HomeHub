@@ -3,7 +3,7 @@ import sys
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from pathlib import Path
-from Config.voice_runtime import runtime_dir
+from Config.voice_runtime import MODEL_FILENAME, runtime_dir
 
 # Szukaj .env w kilku miejscach (kolejność: binary dir → home → projekt)
 # sys.executable wskazuje na binary gdy uruchamiamy z PyInstaller
@@ -61,5 +61,5 @@ def get_settings() -> Settings:
         weather_poll_interval_seconds=int(os.getenv("WEATHER_POLL_INTERVAL", "3600")),
         sensor_rooms=os.getenv("SENSOR_ROOMS", "salon,jadalnia,lazienka"),
         whisper_cli=os.getenv("WHISPER_CLI", str(runtime_dir() / 'whisper-cli')),
-        whisper_model=os.getenv("WHISPER_MODEL", str(runtime_dir() / 'ggml-tiny.bin')),
+        whisper_model=os.getenv("WHISPER_MODEL", str(runtime_dir() / MODEL_FILENAME)),
     )

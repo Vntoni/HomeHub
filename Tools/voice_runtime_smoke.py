@@ -11,7 +11,7 @@ from qasync import QEventLoop
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from Adapters.whisper_cpp_adapter import WhisperCppAdapter
-from Config.voice_runtime import runtime_dir
+from Config.voice_runtime import MODEL_FILENAME, runtime_dir
 from Ports.audio_probe import PcmFormat
 
 
@@ -28,7 +28,7 @@ def speech_fixture():
 
 
 async def main(root):
-    worker = WhisperCppAdapter(root / 'whisper-cli', root / 'ggml-tiny.bin')
+    worker = WhisperCppAdapter(root / 'whisper-cli', root / MODEL_FILENAME)
     speech = await worker.transcribe(speech_fixture(), PcmFormat(48000, 2))
     if len(speech.text.split()) < 3:
         raise RuntimeError('Speech fixture returned no usable transcript; refusing deployment')

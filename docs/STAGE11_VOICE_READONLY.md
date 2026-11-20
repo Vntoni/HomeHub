@@ -1,5 +1,8 @@
 # Etap 11 — pytania o ostatni znany stan domu
 
+Aktualizacja jakości STT: domyślny model base i słownik HomeHub opisano w
+[POLISH_SPEECH_QUALITY.md](POLISH_SPEECH_QUALITY.md). Poniżej zapis wcześniejszego etapu.
+
 Po potwierdzeniu transkrypcji przez użytkownika dodajemy odpowiedź tekstową
 na małą listę polskich pytań. Najpierw weryfikujemy rozumienie i odczyty;
 TTS, polecenia urządzeń, wake word i LLM pozostają osobnymi etapami.

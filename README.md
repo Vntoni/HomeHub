@@ -186,3 +186,11 @@ Godziny zmiany czasu dotyczą polskiej strefy czasowej.
 
 Testy: `python Tests/run_offline.py` obejmuje agregację, brak danych, zmianę
 czasu, harmonogram, błędy, cache, zamykanie i interakcje panelu QML.
+
+### Jakość polskiej mowy
+
+Domyślny model STT to teraz wielojęzyczny **base** z podpowiedzią słownictwa
+HomeHub. Panel pokazuje nazwę aktywnego modelu. Istniejące WHISPER_CLI i
+WHISPER_MODEL w prywatnym .env nadal mają pierwszeństwo. Porównanie jakości,
+obsługa błędów oraz plan rozmowy z danymi domu i TTS:
+[Polska mowa i droga do rozmowy z HomeHub](docs/POLISH_SPEECH_QUALITY.md).

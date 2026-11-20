@@ -56,6 +56,11 @@ class AudioProbeController(QObject):
     def understood(self): return self._understood
     @Property(bool, constant=True)
     def canAnswer(self): return self._answerer is not None
+    @Property(str, notify=changed)
+    def speechProfile(self):
+        label = getattr(self._transcriber, "profile_label", "")
+        return label if isinstance(label, str) else ""
+
     @Property(bool, notify=changed)
     def canTranscribe(self):
         return self._transcriber is not None and self._transcriber.available()
