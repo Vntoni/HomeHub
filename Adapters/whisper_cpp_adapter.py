@@ -10,6 +10,13 @@ from array import array
 from dataclasses import dataclass
 
 
+# Vocabulary only: never seed measurements, states or commands into the audio.
+HOME_VOCABULARY = (
+    "HomeHub, klimatyzacja, klimatyzator, temperatura, wilgotność, "
+    "salon, jadalnia, łazienka, bojler, grzejnik, zużycie prądu."
+)
+
+
 @dataclass(frozen=True)
 class Transcription:
     text: str
@@ -35,10 +42,15 @@ def wav_bytes(pcm, fmt):
 
 
 class WhisperCppAdapter:
-    def __init__(self, executable, model, *, spawn=None, timeout=60):
+    def __init__(self, executable, model, *, spawn=None, timeout=60, prompt=HOME_VOCABULARY):
         self.executable, self.model = Path(executable).expanduser(), Path(model).expanduser()
         self._spawn = spawn or asyncio.create_subprocess_exec
         self._timeout = timeout
+        self.prompt = prompt
+
+    @property
+    def profile_label(self):
+        return f"{self.model.name} · język polski"
 
     def available(self):
         return self.executable.is_file() and os.access(self.executable, os.X_OK) and self.model.is_file()
@@ -67,6 +79,8 @@ class WhisperCppAdapter:
         # Explicit text output is required even when the process exits cleanly.
         args = [str(self.executable), '-m', str(self.model), '-l', 'pl', '-t', '2',
                 '-ng', '-nt', '-np', '-otxt', '-of', '-', '-f', '-']
+        if self.prompt:
+            args[1:1] = ['--prompt', self.prompt]
         if sys.platform.startswith('linux'):
             args = ['/usr/bin/nice', '-n', '10', *args]
         # In particular do not inherit device passwords, proxy settings or the

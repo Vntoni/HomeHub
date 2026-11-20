@@ -1,0 +1,57 @@
+name: Local AI benchmark on RPi5
+on:
+  workflow_dispatch:
+    inputs:
+      enable_in_app:
+        description: Enable local agent after all benchmark cases pass
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: raspberrypi5-deploy
+  cancel-in-progress: false
+jobs:
+  benchmark:
+    if: github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Connect to application user session
+        run: |
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+      - name: Install pinned CPU runtime and model
+        run: bash Tools/install_local_agent.sh
+      - name: Wait for model
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9081/health; then exit 0; fi
+            sleep 3
+          done
+          exit 1
+      - name: Compare Polish intents with HomeHub running
+        run: |
+          systemctl --user is-active --quiet bazadomowa
+          ~/.virtualenvs/Baza_Domowa/bin/python Tools/benchmark_local_agent.py --output local-agent-benchmark.json
+      - name: Enable in application after successful benchmark
+        if: inputs.enable_in_app
+        run: |
+          mkdir -p "$HOME/.config/systemd/user/bazadomowa.service.d"
+          printf '%s\n' '[Service]' 'Environment=HOMEHUB_LOCAL_AGENT=1' > "$HOME/.config/systemd/user/bazadomowa.service.d/20-local-agent.conf"
+          systemctl --user daemon-reload
+          systemctl --user restart bazadomowa
+          sleep 10
+          systemctl --user is-active --quiet bazadomowa
+      - name: Runtime status
+        if: always()
+        run: |
+          systemctl --user show homehub-agent -p ActiveState -p Result -p MemoryCurrent -p MemoryPeak || true
+          journalctl --user -u homehub-agent -n 30 --no-pager || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-agent-benchmark
+          path: local-agent-benchmark.json
+          if-no-files-found: warn

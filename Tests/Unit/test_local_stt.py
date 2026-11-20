@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from PySide6.QtCore import QCoreApplication
 
-from Adapters.whisper_cpp_adapter import WhisperCppAdapter, Transcription, wav_bytes
+from Adapters.whisper_cpp_adapter import WhisperCppAdapter, Transcription, wav_bytes, HOME_VOCABULARY
 from Interface.qt_audio_probe import AudioProbeController
 from Ports.audio_probe import PcmFormat
 from Tests.fake_audio_probe import FakeAudioProbe
@@ -78,6 +78,9 @@ async def test_worker_uses_stdin_polish_bounded_threads_and_clean_env(worker, mo
     assert args[args.index('-l') + 1] == 'pl'
     assert args[args.index('-t') + 1] == '2'
     assert args[-2:] == ('-f', '-')
+    assert args[args.index('--prompt') + 1] == HOME_VOCABULARY
+    assert 'klimatyzacja' in HOME_VOCABULARY
+    assert 'włączona' not in HOME_VOCABULARY and '21' not in HOME_VOCABULARY
     assert 'ARISTON_PWD' not in kwargs['env'] and 'LD_LIBRARY_PATH' not in kwargs['env']
     assert p.stdin.write.call_args.args[0].startswith(b'RIFF')
     p.stdin.close.assert_called_once()

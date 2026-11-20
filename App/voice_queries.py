@@ -47,17 +47,41 @@ def one_edit(left, right):
     return any(long[:i] + long[i + 1:] == short for i in range(len(long)))
 
 
+def edit_distance(left, right):
+    previous = list(range(len(right) + 1))
+    for i, a in enumerate(left, 1):
+        current = [i]
+        for j, b in enumerate(right, 1):
+            current.append(min(current[-1] + 1, previous[j] + 1,
+                               previous[j - 1] + (a != b)))
+        previous = current
+    return previous[-1]
+
+
+def question_words(text):
+    words = re.findall(r'\w+', normalize(text))
+    # Only remove explicit polite introductions, never negation or commands.
+    for prefix in (['czy', 'mozesz', 'mi', 'powiedziec'], ['mozesz', 'mi', 'powiedziec'],
+                   ['powiedz', 'mi'], ['prosze']):
+        if words[:len(prefix)] == prefix:
+            return words[len(prefix):]
+    return words
+
+
 def parse_question(text):
     if not isinstance(text, str) or not text.strip() or len(text) > 300:
         return None
-    words = re.findall(r'\w+', normalize(text))
+    words = question_words(text)
     if len(words) > 14:
         return None
     tokens, corrections = [], 0
     for word in words:
         value = ALIASES.get(word)
         if value is None and len(word) >= 5 and corrections == 0:
-            candidates = {value for known, value in FUZZY.items() if one_edit(word, known)}
+            candidates = {value for known, value in FUZZY.items()
+                          if one_edit(word, known) or
+                          (value == 'ac' and len(word) >= 10 and len(known) >= 10
+                           and edit_distance(word, known) <= 2)}
             if len(candidates) == 1:
                 value = candidates.pop()
                 corrections += 1
@@ -115,6 +139,12 @@ class ReadOnlyHomeQueries:
     def answer(self, text):
         parsed = parse_question(text)
         if parsed is None:
+            if isinstance(text, str) and len(text) <= 300 and tuple(question_words(text)) in {
+                ('jaka', 'jest', 'temperatura'), ('jaka', 'temperatura'), ('temperatura',),
+                ('jaka', 'jest', 'wilgotnosc'), ('wilgotnosc',),
+                ('czy', 'klimatyzacja', 'jest', 'wlaczona'), ('stan', 'klimatyzacji'),
+            }:
+                return Reply('', 'O które pomieszczenie pytasz: salon, jadalnię czy łazienkę?')
             return Reply('', 'Nie rozumiem jednoznacznie pytania. ' + HELP)
         kind, room, corrected = parsed
         label = ROOMS[room]

@@ -28,7 +28,7 @@ def test_known_questions_and_single_minor_typo(text, kind, room, corrected):
 
 
 @pytest.mark.parametrize('text', [
-    '', 'x' * 301, 'Jaka jest temperatura?', 'Temperatura w sypialni',
+    '', 'x' * 301, 'Temperatura w sypialni',
     'Włącz klimatyzację w salonie', 'Wyłącz klimatyzację w salonie',
     'Nie włączaj klimatyzacji w salonie', 'Czy klimatyzacja w salonie nie jest włączona?',
     'Jaka temperatura w salonie i jadalni', 'Ustaw 23 stopnie w salonie',
@@ -173,3 +173,34 @@ async def test_late_transcription_cannot_answer_after_panel_closed(app):
     await probe.aclose()
     answerer.assert_not_called()
     assert not probe.answer and not probe.transcript
+
+
+@pytest.mark.parametrize('text', [
+    'Czy klimanyzapja w salonie jest włączona?',
+    'Powiedz mi, czy klimatyzacja w salonie jest włączona?',
+    'Czy możesz mi powiedzieć, jaka jest temperatura w łazience?',
+])
+def test_home_vocabulary_and_polite_readonly_questions(text):
+    assert parse_question(text) is not None
+    if 'klimanyzapja' in text:
+        assert parse_question(text) == ('ac', 'salon', True)
+        reply = ReadOnlyHomeQueries().answer(text)
+        assert 'dopasowano' in reply.understood
+        assert 'brak danych' in reply.answer
+
+
+@pytest.mark.parametrize('text', [
+    'Powiedz mi, włącz klimatyzację w salonie',
+    'Czy klimanyzapja w salonie nie jest włączona?',
+    'Czy klimanyzapja w salone jest włączona?',
+    'Czy klimatyzacja w salonie jest włóczona?',
+    'Czy możesz mi powiedzieć hasło do Taurona?',
+])
+def test_typo_tolerance_never_changes_negation_verbs_or_multiple_words(text):
+    assert parse_question(text) is None
+
+
+@pytest.mark.parametrize('text', ['Jaka jest temperatura?', 'Wilgotność', 'Czy klimatyzacja jest włączona?'])
+def test_missing_room_asks_for_clarification_without_guessing(text):
+    reply = ReadOnlyHomeQueries().answer(text)
+    assert not reply.understood and 'pomieszczenie' in reply.answer

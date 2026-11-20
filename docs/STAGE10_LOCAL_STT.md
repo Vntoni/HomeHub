@@ -1,5 +1,8 @@
 # Etap 10 — lokalna transkrypcja po polsku
 
+Aktualizacja jakości STT: domyślny model base i słownik HomeHub opisano w
+[POLISH_SPEECH_QUALITY.md](POLISH_SPEECH_QUALITY.md). Poniżej zapis wcześniejszego etapu.
+
 Po potwierdzeniu przez użytkownika nagrywania i odsłuchu dodajemy kolejny
 mały krok: **Nagraj 5 s → Rozpoznaj po polsku → tekst na ekranie**.
 Tekst nie wywołuje żadnej funkcji urządzeń. Intencje odczytu stanu, TTS,
