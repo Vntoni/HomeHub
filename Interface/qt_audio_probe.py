@@ -317,7 +317,7 @@ class AudioProbeController(QObject):
     def editQuestion(self, text):
         if self._closed or not self._opened or self.busy:
             return
-        self._question = text[:300]
+        self._question = text[:1600]
         self._answer = self._understood = ""
         self.changed.emit()
 

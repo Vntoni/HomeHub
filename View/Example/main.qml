@@ -37,7 +37,7 @@ ApplicationWindow {
             ColumnLayout {
                 spacing: 2
                 Label { text: "Dom"; font.pixelSize: 30; font.bold: true }
-                Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : (backend && backend.audioProbe.conversation.enabled ? (backend.audioProbe.conversation.active ? "Rozmowa głosowa aktywna" : "Nasłuch hasła: Gugu gaga") : "Temperatura i urządzenia"); color: "#a9b8c6"; font.pixelSize: 14 }
+                Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : (backend && backend.audioProbe.conversation.enabled ? (backend.audioProbe.conversation.active ? "Rozmowa głosowa aktywna" : "Nasłuch hasła: Klopsy") : "Temperatura i urządzenia"); color: "#a9b8c6"; font.pixelSize: 14 }
             }
             Item { Layout.fillWidth: true }
             PanelButton {

@@ -13,9 +13,9 @@ from Config.voice_runtime import runtime_dir, MODEL_FILENAME
 async def main():
     speaker = PiperTts()
     transcriber = WhisperCppAdapter(runtime_dir() / 'whisper-cli', runtime_dir() / MODEL_FILENAME,
-        max_seconds=12, prompt=HOME_VOCABULARY + ' Hasło: Gugu gaga.')
+        max_seconds=30, prompt=HOME_VOCABULARY + ' Hasło: Klopsy.')
     try:
-        pcm, fmt = await speaker.synthesize('Gugu gaga.')
+        pcm, fmt = await speaker.synthesize('Klopsy.')
         result = await transcriber.transcribe(pcm, fmt)
         print(f'Synthetic wake phrase: {result.text!r}; STT {result.seconds:.2f}s', flush=True)
         if not is_toggle(result.text):

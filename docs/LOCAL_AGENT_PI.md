@@ -3,7 +3,8 @@
 Pierwszy etap: LFM3-1.7B Q4_K_M interpretuje pytania w istniejącym panelu mowy
 (głos → Whisper → tekst lub wpisanie pytania). Odpowiedź jest tekstowa i pochodzi
 wyłącznie z cache HomeHub. Obsługiwane: temperatura, wilgotność, stan AC oraz
-krótkie dopowiedzenia. Kontekst wygasa po 120 s i po zamknięciu panelu.
+swobodne polskie pytania, temperatura i wilgotność razem oraz dopowiedzenia.
+Przy niejasnym pomiarze agent dopytuje, zachowując znane pomieszczenie. Kontekst wygasa po 300 s i po zamknięciu panelu.
 Nie ma jeszcze TTS, ciągłego nasłuchiwania, sterowania ani zapytań o energię/boiler/grzejniki.
 Model nie otrzymuje haseł, pomiarów ani dostępu do urządzeń. Nie jest uruchamiany na Macu.
 
@@ -21,6 +22,7 @@ curl --fail http://127.0.0.1:9081/health
 Instalator wymaga Linux ARM64. Buduje przypiętą wersję llama.cpp b11960 (2 zadania
 kompilacji), pobiera model ok. 1,1 GB z przypiętej rewizji producenta, sprawdza SHA256.
 Potrzebne kilka GB wolnego miejsca na źródła, kompilację i model. Kompilacja może potrwać.
+Przy braku systemowego CMake instalator pobiera CMake 3.31.6 do osobnego venv.
 Nie uruchamia się automatycznie w CI/CD; kolejne deploye aplikacji nie przebudowują modelu.
 Usługa użytkownika `homehub-agent` startuje po zalogowaniu; aby startowała także po
 restarcie bez logowania: `sudo loginctl enable-linger miggie`.
@@ -42,7 +44,7 @@ python3 -m venv ~/.local/share/homehub/agent/bench-venv
 ~/.local/share/homehub/agent/bench-venv/bin/python Tools/benchmark_local_agent.py --output ~/lfm3-3threads.json
 ```
 
-Test obejmuje 30 pytań, poprawność intencji, medianę/p95 czasu HTTP, dostępną pamięć
+Test obejmuje 41 pytań, poprawność intencji, medianę/p95 czasu HTTP, dostępną pamięć
 systemu i RSS/peak RSS serwera (peak od jego startu). To NIE jest pomiar STT/TTS ani
 płynności UI; podczas testu sprawdź reakcję ekranu ręcznie. Kod wyjścia 1 oznacza błędy
 klasyfikacji lub niedostępny model — zachowaj JSON. Nie traktuj samej poprawności JSON

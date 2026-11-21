@@ -142,7 +142,9 @@ class ConversationController(QObject):
                 future.set_exception(RuntimeError('Audio input failed'))
         adapter = self._adapter
         fmt = adapter.record(self._input, data, error)
-        segmenter = UtteranceBuffer(fmt, threshold=self._saved('rmsThreshold', .008))
+        segmenter = UtteranceBuffer(fmt, threshold=self._saved('rmsThreshold', .008),
+                                    max_seconds=30 if self._active else 6,
+                                    silence_seconds=1.2 if self._active else .7)
         try:
             pcm, too_long = await future
             return pcm, fmt, too_long
@@ -173,12 +175,12 @@ class ConversationController(QObject):
         try:
             while self._enabled:
                 self._set('listening' if self._active else 'waiting',
-                          'Słucham pytania. „Gugu gaga” kończy rozmowę.' if self._active
-                          else 'Nasłuch hasła „Gugu gaga” — lokalnie.')
+                          'Słucham pytania. „Klopsy” kończy rozmowę.' if self._active
+                          else 'Nasłuch hasła „Klopsy” — lokalnie.')
                 pcm, fmt, too_long = await self._capture()
                 if too_long:
                     if self._active:
-                        await self._say('Powiedz krótsze pytanie, do dwunastu sekund.')
+                        await self._say('Powiedz krótsze pytanie, do trzydziestu sekund.')
                     continue
                 self._set('processing', 'Rozpoznaję wypowiedź lokalnie…')
                 transcript = await self.transcriber.transcribe(pcm, fmt)
