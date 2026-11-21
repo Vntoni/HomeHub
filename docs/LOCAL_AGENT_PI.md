@@ -112,3 +112,10 @@ ograniczony do 128 MiB. Domyślny odstęp 8192 nie pomagał w kontekście 2048 t
 Pozwala to ponownie wykorzystać wspólny prompt w modelu z warstwami rekurencyjnymi.
 Pomiary zimnego i kolejnych żądań nadal należy odróżniać; w benchmarku pierwszy
 przypadek może być wolniejszy.
+
+
+Po udanym pełnym benchmarku można użyć `activation_only=true` oraz `enable_in_app=true`
+w workflow Local AI benchmark on RPi5. Nadal weryfikuje runtime i trzy pytania, ale nie
+powtarza pełnego pomiaru. Stosuj tę opcję dla tej samej sprawdzonej wersji klienta i modelu.
+W logu uruchomienia aplikacji pojawia się `HomeHub voice answers: local LFM3 enabled`
+lub `basic parser`, co pozwala odróżnić faktycznie używany tryb od samej obecności modelu.
