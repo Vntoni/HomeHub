@@ -2,6 +2,10 @@ name: Local AI benchmark on RPi5
 on:
   workflow_dispatch:
     inputs:
+      activation_only:
+        description: Activate after a previously successful full benchmark; still run 3 smoke questions
+        type: boolean
+        default: false
       enable_in_app:
         description: Enable local agent after all benchmark cases pass
         type: boolean
@@ -31,7 +35,10 @@ jobs:
             sleep 3
           done
           exit 1
+      - name: Check three representative model responses
+        run: ~/.virtualenvs/Baza_Domowa/bin/python Tools/local_agent_smoke.py
       - name: Compare Polish intents with HomeHub running
+        if: ${{ !inputs.activation_only }}
         run: |
           systemctl --user is-active --quiet bazadomowa
           ~/.virtualenvs/Baza_Domowa/bin/python Tools/benchmark_local_agent.py --output local-agent-benchmark.json

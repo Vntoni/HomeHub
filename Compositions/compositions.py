@@ -208,6 +208,8 @@ async def _build_backend(resources) -> QtHomeBackend:
                             conversation_transcriber=WhisperCppAdapter(s.whisper_cli, s.whisper_model,
                                 max_seconds=30, prompt=HOME_VOCABULARY + " Hasło: Klopsy."),
                             speaker=PiperTts(), voice_preferences=QSettings("HomeHub", "VoiceConversation"))
+    print('HomeHub voice answers: ' + ('local LFM3 enabled' if s.local_agent_enabled
+                                     else 'basic parser'), flush=True)
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
 
     # --- Pogoda Open-Meteo (polling w tle) ---

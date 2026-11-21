@@ -100,3 +100,32 @@ Opcja `enable_in_app` włącza AI dopiero po przejściu wszystkich przypadków b
 Tworzy `~/.config/systemd/user/bazadomowa.service.d/20-local-agent.conf` — ten wpis
 ma pierwszeństwo przed `.env`. Aby cofnąć takie włączenie, usuń wyłącznie ten plik,
 wykonaj `systemctl --user daemon-reload` i zrestartuj `bazadomowa`.
+
+
+Klient na przypiętej wersji b11960 używa zwykłej generacji: wymuszanie JSON w serwerze
+powoduje błąd dekodera na dodatkowym pustym znaczniku `</think>`. Aplikacja usuwa tylko
+ten znacznik, następnie sprawdza cały obiekt JSON, jego klucze i dozwolone wartości.
+Nie akceptuje tekstu objaśniającego, dodatkowych pól ani liczb pochodzących od modelu.
+
+Dla Pi 4 GB ustawiono batch/ubatch=128, 4 checkpointy z odstępem 128 tokenów i cache
+ograniczony do 128 MiB. Domyślny odstęp 8192 nie pomagał w kontekście 2048 tokenów.
+Pozwala to ponownie wykorzystać wspólny prompt w modelu z warstwami rekurencyjnymi.
+Pomiary zimnego i kolejnych żądań nadal należy odróżniać; w benchmarku pierwszy
+przypadek może być wolniejszy.
+
+
+Po udanym pełnym benchmarku można użyć `activation_only=true` oraz `enable_in_app=true`
+w workflow Local AI benchmark on RPi5. Nadal weryfikuje runtime i trzy pytania, ale nie
+powtarza pełnego pomiaru. Stosuj tę opcję dla tej samej sprawdzonej wersji klienta i modelu.
+W logu uruchomienia aplikacji pojawia się `HomeHub voice answers: local LFM3 enabled`
+lub `basic parser`, co pozwala odróżnić faktycznie używany tryb od samej obecności modelu.
+
+
+Właściwa ścieżka HomeHub łączy rozpoznawanie pojęć/pomieszczeń z lokalnym modelem.
+Sam LFM3 uzyskał 22/41 poprawnych intencji w surowym teście na Pi; mylił m.in. typy
+pomiarów i zgadywał pokój. Dlatego jawne odczyty, pokoje, odpowiedzi na doprecyzowanie
+i nieobsługiwane polecenia rozpoznaje warstwa domenowa. Niejasna propozycja modelu
+prowadzi do pytania o rodzaj odczytu; nie może sama wybrać niepodanego pokoju.
+Benchmark domyślnie mierzy tę rzeczywistą ścieżkę aplikacji i podaje liczbę wywołań LLM.
+Do porównania samego modelu nadal służy `--raw-model`. Wyników warstwy domenowej
+nie należy przedstawiać jako trafności lub szybkości samego LFM3.
