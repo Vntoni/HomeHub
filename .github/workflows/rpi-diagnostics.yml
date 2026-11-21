@@ -1,6 +1,11 @@
 name: Raspberry Pi service diagnostics
 on:
   workflow_dispatch:
+    inputs:
+      benchmark:
+        description: Run model-only candidate benchmark without enabling the app
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -39,16 +44,20 @@ jobs:
                   'chat_template_kwargs': {'enable_thinking': False},
                   'messages': [{'role': 'system', 'content': PROMPT + '\nPrevious intent: {"kind":"unknown","room":"unknown"}'},
                                {'role':'user','content':'Jak ciepło jest w salonie?'}],
-                  'response_format': {'type':'json_schema', 'json_schema': {'name':'homehub_intent','strict':True,'schema':SCHEMA}}}
-              for mode in ['json_object', 'plain']:
-                  if mode == 'plain':
-                      payload.pop('response_format', None)
-                  else:
-                      payload['response_format'] = {'type': mode}
-                  response = client.post('http://127.0.0.1:9081/v1/chat/completions', json=payload)
-                  print('Mode:', mode, 'HTTP:', response.status_code)
-                  print('Synthetic response:', response.text[:2500])
+                  'cache_prompt': True}
+              response = client.post('http://127.0.0.1:9081/v1/chat/completions', json=payload)
+              print('HTTP:', response.status_code)
+              print('Synthetic response:', response.text[:2500])
           PYTHON
+      - name: Benchmark candidate model client without changing app configuration
+        if: inputs.benchmark
+        run: ~/.virtualenvs/Baza_Domowa/bin/python Tools/benchmark_local_agent.py --output candidate-model-benchmark.json
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.benchmark
+        with:
+          name: candidate-model-benchmark
+          path: candidate-model-benchmark.json
+          if-no-files-found: warn
       - name: Read HomeHub service status and recent logs
         shell: bash
         run: |

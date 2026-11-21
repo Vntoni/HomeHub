@@ -50,6 +50,19 @@ def validate_intent(value):
     return value
 
 
+def parse_content(content):
+    if not isinstance(content, str):
+        raise ValueError('Invalid content')
+    content = content.strip()
+    # Only the observed empty reasoning delimiter is accepted, not arbitrary
+    # prose/code fences or a JSON fragment extracted from an explanation.
+    if content.startswith('</think>'):
+        content = content[len('</think>'):].strip()
+    if content.startswith('<think></think>'):
+        content = content[len('<think></think>'):].strip()
+    return validate_intent(json.loads(content))
+
+
 class LocalIntentClient:
     def __init__(self, *, transport=None):
         self.transport = transport
@@ -59,13 +72,13 @@ class LocalIntentClient:
             raise ValueError('Question must contain 1–1600 characters')
         context = json.dumps(previous or {'kind': 'unknown', 'room': 'unknown'})
         payload = {
-            'model': 'homehub-local', 'stream': False, 'temperature': 0.1,
+            'model': 'homehub-local', 'stream': False, 'temperature': 0.1, 'cache_prompt': True,
             'top_k': 50, 'repeat_penalty': 1.1, 'max_tokens': 80,
             'chat_template_kwargs': {'enable_thinking': False},
             'messages': [{'role': 'system', 'content': PROMPT + '\nPrevious intent: ' + context},
                          {'role': 'user', 'content': text}],
-            'response_format': {'type': 'json_schema', 'json_schema': {
-                'name': 'homehub_intent', 'strict': True, 'schema': SCHEMA}},
+            # b11960 emits an extra </think> even with thinking disabled. Its
+            # grammar decoder crashes on that token; validate the JSON locally.
         }
         # A wall-clock timeout also bounds a server slowly streaming response bytes.
         async with asyncio.timeout(30):
@@ -82,4 +95,4 @@ class LocalIntentClient:
         choice = json.loads(data)['choices'][0]
         if choice.get('finish_reason') != 'stop':
             raise ValueError('Incomplete model response')
-        return validate_intent(json.loads(choice['message']['content']))
+        return parse_content(choice['message']['content'])
