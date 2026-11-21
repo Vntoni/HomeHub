@@ -64,6 +64,9 @@ jobs:
                   print('Question:', question, 'HTTP:', response.status_code)
                   print('Synthetic response:', response.text[:2500])
           PYTHON
+      - name: Check three representative classifications
+        if: inputs.benchmark
+        run: ~/.virtualenvs/Baza_Domowa/bin/python Tools/local_agent_smoke.py
       - name: Benchmark candidate model client without changing app configuration
         if: inputs.benchmark
         run: ~/.virtualenvs/Baza_Domowa/bin/python Tools/benchmark_local_agent.py --output candidate-model-benchmark.json
