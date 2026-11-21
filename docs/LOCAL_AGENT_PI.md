@@ -119,3 +119,13 @@ w workflow Local AI benchmark on RPi5. Nadal weryfikuje runtime i trzy pytania, 
 powtarza pełnego pomiaru. Stosuj tę opcję dla tej samej sprawdzonej wersji klienta i modelu.
 W logu uruchomienia aplikacji pojawia się `HomeHub voice answers: local LFM3 enabled`
 lub `basic parser`, co pozwala odróżnić faktycznie używany tryb od samej obecności modelu.
+
+
+Właściwa ścieżka HomeHub łączy rozpoznawanie pojęć/pomieszczeń z lokalnym modelem.
+Sam LFM3 uzyskał 22/41 poprawnych intencji w surowym teście na Pi; mylił m.in. typy
+pomiarów i zgadywał pokój. Dlatego jawne odczyty, pokoje, odpowiedzi na doprecyzowanie
+i nieobsługiwane polecenia rozpoznaje warstwa domenowa. Niejasna propozycja modelu
+prowadzi do pytania o rodzaj odczytu; nie może sama wybrać niepodanego pokoju.
+Benchmark domyślnie mierzy tę rzeczywistą ścieżkę aplikacji i podaje liczbę wywołań LLM.
+Do porównania samego modelu nadal służy `--raw-model`. Wyników warstwy domenowej
+nie należy przedstawiać jako trafności lub szybkości samego LFM3.

@@ -1,7 +1,8 @@
 """Small read-only agent. Cache values and response wording stay outside the LLM."""
 import time
+import re
 
-from App.voice_queries import Reply, parse_question
+from App.voice_queries import Reply, parse_question, normalize
 
 
 class LocalHomeAgent:
@@ -18,6 +19,11 @@ class LocalHomeAgent:
         generation = self.generation
         if not isinstance(text, str) or not text.strip() or len(text) > 1600:
             return Reply('', 'Powiedz pytanie w jednej wypowiedzi, do trzydziestu sekund.')
+        greeting = re.sub(r'[^\w\s]', '', normalize(text)).strip()
+        if greeting in ('dziekuje', 'dzieki', 'super dzieki', 'dziekuje bardzo'):
+            return Reply('', 'Nie ma sprawy. W czym jeszcze mogę pomóc?')
+        if greeting in ('czesc', 'hej', 'witaj'):
+            return Reply('', 'Cześć. O co chcesz zapytać?')
         parsed = parse_question(text)
         if parsed:
             kind, room, _ = parsed

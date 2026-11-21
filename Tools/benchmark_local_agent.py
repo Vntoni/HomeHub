@@ -12,6 +12,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from Adapters.local_intent import LocalIntentClient
+from App.voice_intents import GroundedIntentClient
 
 
 def intent(kind, room):
@@ -74,7 +75,7 @@ def memory():
 
 
 async def run(args):
-    client = LocalIntentClient()
+    client = LocalIntentClient() if args.raw_model else GroundedIntentClient(LocalIntentClient())
     rows, times = [], []
     before = memory()
     for index, (text, previous, expected) in enumerate(cases(), 1):
@@ -95,11 +96,12 @@ async def run(args):
         if actual != expected:
             print(f'  expected={expected}; actual={actual}; error={error}', flush=True)
         print(f'{index:02d}: {"OK" if actual == expected else "FAIL"} {elapsed:.2f}s — {text}', flush=True)
-    report = dict(label=args.label, platform=platform.platform(), before=before, after=memory(),
+    report = dict(label=args.label, mode='raw_model' if args.raw_model else 'grounded_homehub',
+                  model_calls=len(rows) if args.raw_model else client.model_calls, platform=platform.platform(), before=before, after=memory(),
                   correct=sum(r['correct'] for r in rows), total=len(rows),
                   median_seconds=statistics.median(times),
                   p95_seconds=sorted(times)[math.ceil(.95 * len(times))-1], cases=rows,
-                  note='Intent-only HTTP wall time; not microphone-to-speaker latency. First request may be cold.')
+                  note='HomeHub intent route wall time (or raw HTTP with --raw-model); not microphone-to-speaker latency. Model calls counted separately.')
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n')
     print(f"{report['correct']}/{len(rows)}; median {report['median_seconds']:.2f}s; p95 {report['p95_seconds']:.2f}s")
     return 0 if report['correct'] == len(rows) else 1
@@ -107,6 +109,7 @@ async def run(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--label', default='LFM3-1.7B Q4_K_M, 3 threads, ctx2048')
+    parser.add_argument('--raw-model', action='store_true', help='Compare model alone, bypassing HomeHub grounding')
+    parser.add_argument('--label', default='HomeHub grounded intents + LFM3-1.7B Q4_K_M, 3t ctx2048')
     parser.add_argument('--output', type=Path, default=Path('local-agent-benchmark.json'))
     raise SystemExit(asyncio.run(run(parser.parse_args())))

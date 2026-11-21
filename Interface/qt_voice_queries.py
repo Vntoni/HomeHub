@@ -11,7 +11,8 @@ class VoiceQueryBridge(QObject):
         if local_agent_enabled:
             from App.local_agent import LocalHomeAgent
             from Adapters.local_intent import LocalIntentClient
-            self.agent = LocalHomeAgent(self.cache, LocalIntentClient())
+            from App.voice_intents import GroundedIntentClient
+            self.agent = LocalHomeAgent(self.cache, GroundedIntentClient(LocalIntentClient()))
         backend.sensorTempChanged.connect(self.temperature)
         backend.sensorHumidityChanged.connect(self.humidity)
         backend.tempIndoorChanged.connect(self.indoor)
