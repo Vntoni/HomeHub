@@ -17,6 +17,8 @@ jobs:
         run: |
           export XDG_RUNTIME_DIR="/run/user/$(id -u)"
           export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" >> "$GITHUB_ENV"
           systemctl --user show homehub-agent --property=ActiveState,SubState,MemoryCurrent || true
           ~/.virtualenvs/Baza_Domowa/bin/python - <<'PYTHON'
           from pathlib import Path

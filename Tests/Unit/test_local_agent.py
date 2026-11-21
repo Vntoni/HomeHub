@@ -110,6 +110,9 @@ async def test_close_before_async_answer_starts():
 
 
 @pytest.mark.parametrize('text', [
+    'Jak ciepło jest w salonie?',
+    'Ile stopni mamy w salonie?',
+    'Temperatura w pokoju dziennym',
     'Proszę powiedz mi jaka jest temperatura w salonie',
     'Proszę, czy możesz mi powiedzieć, jaka jest temperatura w salonie?',
     'Czy mógłbyś mi powiedzieć jaka jest temperatura w salonie?',
@@ -176,3 +179,15 @@ def test_observed_empty_thinking_marker_is_accepted(prefix):
 ])
 def test_no_intent_is_extracted_from_arbitrary_model_prose(content):
     with pytest.raises(ValueError): parse_content(content)
+
+
+async def test_natural_read_prefixes_do_not_enable_writes():
+    client = AsyncMock()
+    client.classify.return_value = {'kind': 'unknown', 'room': 'unknown'}
+    cache = ReadOnlyHomeQueries()
+    cache.sensor('lazienka', 'humidity', 65)
+    agent = LocalHomeAgent(cache, client)
+    assert '65,0' in (await agent.answer('Proszę sprawdź wilgotność w łazience')).answer
+    client.classify.assert_not_called()
+    assert 'nie steruję' in (await agent.answer('Proszę włącz klimę w salonie')).answer
+    client.classify.assert_awaited_once()

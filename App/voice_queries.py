@@ -15,7 +15,9 @@ class Reply:
 ROOMS = {'salon': 'Salon', 'jadalnia': 'Jadalnia', 'lazienka': 'Łazienka'}
 ALIASES = {
     'jaka': 'jaka', 'jaki': 'jaka', 'jakie': 'jaka', 'jest': 'jest',
-    'ile': 'ile', 'w': 'w', 'czy': 'czy',
+    'ile': 'ile', 'w': 'w', 'czy': 'czy', 'jak': 'jaka', 'mamy': 'jest',
+    'cieplo': 'temperatura', 'zimno': 'temperatura',
+    'wilgotno': 'wilgotnosc', 'sucho': 'wilgotnosc', 'klima': 'ac',
     'temperatura': 'temperatura', 'temperatury': 'temperatura', 'stopni': 'temperatura',
     'wilgotnosc': 'wilgotnosc', 'wilgotnosci': 'wilgotnosc',
     'stan': 'stan', 'status': 'stan',
@@ -60,11 +62,17 @@ def edit_distance(left, right):
 
 def question_words(text):
     words = re.findall(r'\w+', normalize(text))
-    # Only remove explicit polite introductions, never negation or commands.
+    # Only remove polite/read introductions, never negation or device commands.
+    for phrase in (['pokoju', 'dziennym'], ['pokoj', 'dzienny']):
+        for i in range(len(words) - 1):
+            if words[i:i+2] == phrase:
+                words[i:i+2] = ['salon']
+                break
     prefixes = (
         ['czy', 'moglbys', 'mi', 'powiedziec'], ['czy', 'moglabys', 'mi', 'powiedziec'],
         ['czy', 'mozesz', 'mi', 'powiedziec'], ['mozesz', 'mi', 'powiedziec'],
-        ['powiedz', 'mi'], ['powiedz'], ['prosze'],
+        ['powiedz', 'mi'], ['powiedz'], ['prosze'], ['sprawdz'],
+        ['podaj', 'mi'], ['podaj'], ['pokaz'],
     )
     # Introductions can stack: "proszę, powiedz mi...".
     while words:
@@ -98,16 +106,16 @@ def parse_question(text):
     tokens = tuple(tokens)
     for room in ROOMS:
         for kind in ('temperatura', 'wilgotnosc'):
-            prefixes = [('jaka', 'jest', kind), ('jaka', kind), (kind,)]
+            prefixes = [('jaka', 'jest', kind), ('jaka', kind), ('jaka', kind, 'jest'), (kind,)]
             if kind == 'temperatura':
-                prefixes += [('ile', 'jest', kind), ('ile', kind)]
+                prefixes += [('ile', 'jest', kind), ('ile', kind), ('ile', kind, 'jest')]
             if tokens in {prefix + ('w', room) for prefix in prefixes}:
                 return kind, room, bool(corrections)
         if tokens in {
             ('jaka', 'jest', 'stan', 'ac', 'w', room), ('stan', 'ac', 'w', room),
             *(('czy', 'ac', 'w', room, 'jest', state) for state in ('wlaczona', 'wylaczona')),
             *(('czy', 'ac', 'jest', state, 'w', room) for state in ('wlaczona', 'wylaczona')),
-            ('czy', 'wlaczona', 'ac', 'w', room), ('czy', 'ac', 'w', room, 'wlaczona'),
+            ('czy', 'wlaczona', 'ac', 'w', room), ('czy', 'ac', 'wlaczona', 'w', room), ('czy', 'ac', 'w', room, 'wlaczona'),
         }:
             return 'ac', room, bool(corrections)
     return None
