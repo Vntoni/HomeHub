@@ -37,7 +37,7 @@ ApplicationWindow {
             ColumnLayout {
                 spacing: 2
                 Label { text: "Dom"; font.pixelSize: 30; font.bold: true }
-                Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : "Temperatura i urządzenia"; color: "#a9b8c6"; font.pixelSize: 14 }
+                Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : (backend && backend.audioProbe.conversation.enabled ? (backend.audioProbe.conversation.active ? "Rozmowa głosowa aktywna" : "Nasłuch hasła: Gugu gaga") : "Temperatura i urządzenia"); color: "#a9b8c6"; font.pixelSize: 14 }
             }
             Item { Layout.fillWidth: true }
             PanelButton {
@@ -48,7 +48,7 @@ ApplicationWindow {
             }
             MicrophoneStatus {
                 connected: backend ? backend.respeakerConnected : false
-                statusText: backend ? (backend.audioProbe.busy ? backend.audioProbe.message : backend.respeakerStatusText) : "ReSpeaker niepodłączony"
+                statusText: backend ? (backend.audioProbe.conversation.enabled ? backend.audioProbe.conversation.message : (backend.audioProbe.busy ? backend.audioProbe.message : backend.respeakerStatusText)) : "ReSpeaker niepodłączony"
                 active: backend ? backend.audioProbe.busy : false
                 onClicked: audioPopup.open()
                 Layout.preferredWidth: 52

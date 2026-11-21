@@ -25,6 +25,7 @@ Popup {
         input.currentIndex = -1
         output.currentIndex = -1
         if (probe) probe.openPanel()
+        Qt.callLater(function() { scroll.contentItem.contentY = 0 })
     }
     onAboutToHide: if (probe) probe.closePanel()
     Connections {
@@ -52,6 +53,47 @@ Popup {
             width: scroll.availableWidth
             spacing: 10
             onImplicitHeightChanged: Qt.callLater(root.revealAnswer)
+            Label {
+                text: "Rozmowa bez klikania"
+                font.pixelSize: 22; font.bold: true; Layout.fillWidth: true
+            }
+            Label {
+                text: "Powiedz samo „Gugu gaga” i poczekaj na „Słucham”. Zadaj pytanie, a po odpowiedzi kolejne. Powtórz hasło po zakończeniu odpowiedzi, aby zakończyć rozmowę. Nasłuch hasła nadal działa, także po zamknięciu tego panelu."
+                wrapMode: Text.WordWrap; Layout.fillWidth: true; color: "#a9b8c6"
+            }
+            Label {
+                objectName: "conversationStatus"
+                text: root.probe ? root.probe.conversation.message : "Rozmowa niedostępna"
+                color: "#b8e7d7"; wrapMode: Text.WordWrap; Layout.fillWidth: true
+            }
+            PanelButton {
+                objectName: "toggleConversation"
+                text: root.probe && root.probe.conversation.enabled ? "Wyłącz nasłuch i mikrofon" : "Włącz nasłuch hasła"
+                Layout.fillWidth: true
+                enabled: root.probe && (root.probe.conversation.enabled || (!root.probe.busy && root.probe.conversation.available))
+                onClicked: {
+                    if (root.probe.conversation.enabled) root.probe.conversation.stop()
+                    else root.probe.startConversation(input.currentIndex >= 0 ? input.currentValue : "", output.currentIndex >= 0 ? output.currentValue : "")
+                }
+            }
+            Label {
+                text: root.probe && root.probe.conversation.enabled ? root.probe.conversation.question : ""
+                visible: text.length > 0; textFormat: Text.PlainText
+                wrapMode: Text.WordWrap; Layout.fillWidth: true; font.pixelSize: 20
+            }
+            Label {
+                text: root.probe && root.probe.conversation.enabled ? root.probe.conversation.answer : ""
+                visible: text.length > 0; textFormat: Text.PlainText
+                wrapMode: Text.WordWrap; Layout.fillWidth: true; color: "#b8e7d7"; font.pixelSize: 20
+            }
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 10
+              visible: !root.probe || !root.probe.conversation.enabled
+            Label {
+                text: "Diagnostyka i ręczne pytania"
+                font.pixelSize: 18; font.bold: true; Layout.fillWidth: true
+            }
             Label {
                 text: "Nagraj pytanie (do 5 s), potem wybierz Rozpoznaj po polsku. Próbka pozostaje w pamięci i znika po zamknięciu panelu."
                 wrapMode: Text.WordWrap; Layout.fillWidth: true; color: "#a9b8c6"
@@ -189,6 +231,7 @@ Popup {
                 Layout.fillWidth: true
                 enabled: root.probe && !root.probe.busy
                 onClicked: root.probe.refresh()
+            }
             }
         }
       }

@@ -123,7 +123,8 @@ class QtHomeBackend(QObject):
 
     def __init__(self, climate: ClimateService, boiler: WaterHeaterService,
                  washer: WasherService, heater: Optional[HeaterService] = None, sensor: Optional[SensorService] = None,
-                 respeaker=None, audio_factory=None, transcriber=None, energy_service=None, local_agent_enabled=False):
+                 respeaker=None, audio_factory=None, transcriber=None, energy_service=None, local_agent_enabled=False,
+                 conversation_transcriber=None, speaker=None, voice_preferences=None):
         super().__init__()
         self._energy = EnergyController(energy_service, self)
         self._climate = climate
@@ -136,7 +137,9 @@ class QtHomeBackend(QObject):
         self._respeaker_task = None
         self._voice_queries = VoiceQueryBridge(self, local_agent_enabled)
         self._audio_probe = AudioProbeController(audio_factory, self, transcriber=transcriber,
-                                               answerer=self._voice_queries.answer)
+                                               answerer=self._voice_queries.answer,
+                                               conversation_transcriber=conversation_transcriber,
+                                               speaker=speaker, preferences=voice_preferences)
         self._boiler_online = False
         self._command_locks = {}
         self._command_timeout = 45

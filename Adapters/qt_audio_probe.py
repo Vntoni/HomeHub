@@ -1,4 +1,5 @@
-"""Qt audio is loaded only when the user opens diagnostics; never at startup."""
+"""Qt audio for diagnostics and the explicitly enabled local conversation mode."""
+from App.pcm_conversion import resample_pcm
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice
 from PySide6.QtMultimedia import QAudio, QAudioFormat, QAudioSink, QAudioSource, QMediaDevices
 
@@ -29,10 +30,12 @@ class QtAudioProbe:
         self._source = self._sink = self._io = self._buffer = None
 
     def devices(self):
-        def describe(devices):
-            return [{"id": device_key(d), "label": d.description()} for d in devices]
+        def describe(devices, output=False):
+            return [{"id": device_key(d), "label": d.description(),
+                     **({"default": d == self._devices.defaultAudioOutput()} if output else {})}
+                    for d in devices]
         return (describe([d for d in self._devices.audioInputs() if is_respeaker(d)]),
-                describe(self._devices.audioOutputs()))
+                describe(self._devices.audioOutputs(), output=True))
 
     def _find(self, device_id, recording):
         devices = self._devices.audioInputs() if recording else self._devices.audioOutputs()
@@ -79,7 +82,12 @@ class QtAudioProbe:
         device = self._find(device_id, False)
         audio_format = qt_format(fmt)
         if not device.isFormatSupported(audio_format):
-            raise ValueError("Output does not support recording format")
+            preferred = device.preferredFormat()
+            target = PcmFormat(preferred.sampleRate(), preferred.channelCount())
+            audio_format = qt_format(target)
+            if not device.isFormatSupported(audio_format):
+                raise ValueError("Output does not support Int16 audio")
+            pcm = resample_pcm(pcm, fmt, target)
         buffer = self._buffer = QBuffer()
         buffer.setData(QByteArray(pcm))
         buffer.open(QIODevice.OpenModeFlag.ReadOnly)

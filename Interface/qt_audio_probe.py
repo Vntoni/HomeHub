@@ -2,6 +2,7 @@
 import asyncio
 import inspect
 from array import array
+from Interface.qt_conversation import ConversationController
 from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer
 
 
@@ -11,11 +12,13 @@ class AudioProbeController(QObject):
     MAX_SECONDS = 5
     MAX_BYTES = 4 * 1024 * 1024
 
-    def __init__(self, factory=None, parent=None, *, transcriber=None, answerer=None):
+    def __init__(self, factory=None, parent=None, *, transcriber=None, answerer=None, conversation_transcriber=None, speaker=None, preferences=None):
         super().__init__(parent)
         self._factory = factory
         self._transcriber = transcriber
         self._answerer = answerer
+        self._conversation = ConversationController(factory, conversation_transcriber, speaker, answerer, self, preferences)
+        self._conversation.changed.connect(self.changed.emit)
         self._answer = self._understood = self._question = ""
         self._stt_task = None
         self._transcript = ""
@@ -32,6 +35,16 @@ class AudioProbeController(QObject):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._deadline)
 
+    @Property(QObject, constant=True)
+    def conversation(self): return self._conversation
+
+    @Slot(str, str)
+    def startConversation(self, input_id, output_id):
+        if self.busy:
+            return
+        self.clear()
+        self._conversation.start(input_id, output_id)
+
     @Property('QVariantList', notify=devicesChanged)
     def inputs(self): return self._inputs
     @Property('QVariantList', notify=devicesChanged)
@@ -44,7 +57,7 @@ class AudioProbeController(QObject):
     def level(self): return self._level
     @Property(bool, notify=changed)
     def busy(self):
-        return self._state in ("recording", "playing", "transcribing") or (self._stt_task is not None and not self._stt_task.done())
+        return self._conversation.enabled or self._state in ("recording", "playing", "transcribing") or (self._stt_task is not None and not self._stt_task.done())
     @Property(bool, notify=changed)
     def hasRecording(self): return bool(self._pcm) and self._format is not None
     @Property(str, notify=changed)
@@ -76,6 +89,7 @@ class AudioProbeController(QObject):
         if self._closed or connected == self._connected:
             return
         self._connected = connected
+        self._conversation.set_connected(connected)
         if not connected:
             self.clear()
             self._inputs, self._outputs = [], []
@@ -184,6 +198,9 @@ class AudioProbeController(QObject):
 
     @Slot()
     def stop(self):
+        if self._conversation.enabled:
+            self._conversation.stop()
+            return
         if self._stt_task is not None and not self._stt_task.done():
             self.clear()
             return
@@ -225,7 +242,7 @@ class AudioProbeController(QObject):
         if self._stt_task is not None and not self._stt_task.done() and not self._stt_task.cancelling():
             self._stt_task.cancel()
         owner = getattr(self._answerer, "__self__", None)
-        if hasattr(owner, "reset"):
+        if not self._conversation.enabled and hasattr(owner, "reset"):
             owner.reset()
         self._stop_transport()
         self._transcript = ""
@@ -246,6 +263,7 @@ class AudioProbeController(QObject):
         if self._closed:
             return
         self._closed = True
+        self._conversation.shutdown()
         self.closePanel()
         if self._adapter is not None:
             self._adapter.close()
@@ -345,5 +363,6 @@ class AudioProbeController(QObject):
 
     async def aclose(self):
         self.shutdown()
+        await self._conversation.aclose()
         if self._stt_task is not None:
             await asyncio.gather(self._stt_task, return_exceptions=True)
