@@ -1,17 +1,17 @@
 # Rozmowa głosowa na Raspberry Pi
 
 Po wdrożeniu aplikacja ma lokalny głos Piper Gosia (polski, medium) i nasłuch hasła
-„Gugu gaga”. Runtime Piper 1.8.0 i model są instalowane przez CI przed wymianą aplikacji.
+„klopsy”. Runtime Piper 1.8.0 i model są instalowane przez CI przed wymianą aplikacji.
 Model głosu ma przypiętą rewizję i SHA256, dane treningowe Gosia mają licencję CC0.
 Nie potrzeba Maca, serwera w chmurze ani konta TTS.
 
 1. Po podłączeniu ReSpeakera aplikacja wybiera zapisane urządzenia. Przy pierwszym
    uruchomieniu wybiera jedyny ReSpeaker i jego wyjście (lub domyślny głośnik systemu).
    Jeśli wybór jest niejednoznaczny, otwórz panel mikrofonu i wskaż urządzenia.
-2. Powiedz **samo „Gugu gaga”**, zrób pauzę i poczekaj na **„Słucham”**.
-3. Zadaj pytanie. Pauza ok. 0,7 s kończy wypowiedź. Po rozpoznaniu pytania HomeHub
+2. Powiedz **samo „klopsy”**, zrób pauzę i poczekaj na **„Słucham”**.
+3. Zadaj pytanie. Pauza ok. 1,2 s kończy wypowiedź. Po rozpoznaniu pytania HomeHub
    odpowiada przez głośnik i sam wraca do słuchania kolejnego pytania.
-4. Powiedz ponownie **„Gugu gaga”**, gdy agent skończy mówić. Usłyszysz potwierdzenie
+4. Powiedz ponownie **„klopsy”**, gdy agent skończy mówić. Usłyszysz potwierdzenie
    zakończenia rozmowy. Nasłuch samego hasła pozostaje aktywny.
 5. Przycisk **„Wyłącz nasłuch i mikrofon”** w panelu zatrzymuje całe audio i zapamiętuje
    tę decyzję po restarcie. Zamknięcie panelu samo w sobie nie kończy rozmowy.
@@ -26,13 +26,13 @@ podczas rozmowy zatrzymuje ją; nie następuje ciche przełączenie na inny mikr
 
 To pierwsza wersja nasłuchu oparta o lokalny Whisper i wykrywanie energii sygnału,
 a nie specjalnie wytrenowany detektor wake word. Cisza nie uruchamia Whispera.
-Po wykryciu wypowiedzi sprawdzany jest cały rozpoznany tekst: tylko dokładne „Gugu gaga”
+Po wykryciu wypowiedzi sprawdzany jest cały rozpoznany tekst: tylko dokładne „klopsy”
 (z tolerancją interpunkcji/spacji) przełącza stan. Szum, telewizor i odległość mogą
 pogarszać działanie — konieczna jest próba na rzeczywistym mikrofonie. Rozpoznanie hasła
 może trwać kilka sekund. Rozmowa w tle w trybie oczekiwania jest odrzucana po STT,
 nie trafia do modelu językowego i nie jest zapisywana na dysku.
 
-Wypowiedź jest ograniczona do 12 sekund. Zbyt długie pytanie nie jest interpretowane
+Wypowiedź jest ograniczona do 30 sekund. Zbyt długie pytanie nie jest interpretowane
 fragmentami: agent prosi o krótsze. Mikrofon jest zatrzymany podczas interpretowania
 pytania i odtwarzania odpowiedzi, potem obowiązuje 0,7 s przerwy na wybrzmienie dźwięku.
 Nie ma jeszcze przerywania odpowiedzi głosem; przycisk Stop działa natychmiast.
@@ -56,3 +56,15 @@ np. „Temperatura w łazience”, „Wilgotność w łazience”, „Stan klima
 Sprawdź brak samoczynnego wybudzania podczas mówienia agenta, zakończenie hasłem,
 przycisk Stop, zamknięcie panelu, restart aplikacji i odłączenie USB podczas odpowiedzi.
 Testy automatyczne używają sztucznego audio i atrap; nie zastępują tych prób sprzętowych.
+
+
+Swobodne pytania wymagają uruchomionego LFM3. Aktualizacja parsera obsługuje także
+złożone grzecznościowe początki („Proszę, powiedz mi…”), a model rozpoznaje m.in.
+„Trochę mi chłodno, ile stopni jest w pokoju dziennym?”. Przy „Jak tam w salonie?”
+dopytuje o rodzaj odczytu, a odpowiedź „Chodzi mi o temperaturę” uzupełnia ten sam pokój.
+Przy „Sprawdź wilgotność” pyta o pomieszczenie. Kontekst wygasa po 5 minutach.
+Można zapytać o temperaturę i wilgotność naraz w jednym pokoju. Dotyczy to dostępnych
+odczytów; prośby o sterowanie, pogodę lub niepodłączone dane nadal nie są wykonywane.
+Pauza 1,2 s umożliwia krótkie zawahania w zdaniu. Limit 30 s chroni pamięć; wypowiedzi
+zaczynające się od hasła i pytania w jednym zdaniu nie przełączają rozmowy — powiedz
+samo „klopsy”, poczekaj na „Słucham”, potem zadaj pytanie.

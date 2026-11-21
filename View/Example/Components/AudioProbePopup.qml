@@ -58,7 +58,7 @@ Popup {
                 font.pixelSize: 22; font.bold: true; Layout.fillWidth: true
             }
             Label {
-                text: "Powiedz samo „Gugu gaga” i poczekaj na „Słucham”. Zadaj pytanie, a po odpowiedzi kolejne. Powtórz hasło po zakończeniu odpowiedzi, aby zakończyć rozmowę. Nasłuch hasła nadal działa, także po zamknięciu tego panelu."
+                text: "Powiedz samo „Klopsy” i poczekaj na „Słucham”. Zadaj pytanie, a po odpowiedzi kolejne. Powtórz hasło po zakończeniu odpowiedzi, aby zakończyć rozmowę. Nasłuch hasła nadal działa, także po zamknięciu tego panelu."
                 wrapMode: Text.WordWrap; Layout.fillWidth: true; color: "#a9b8c6"
             }
             Label {
@@ -193,7 +193,7 @@ Popup {
                 objectName: "voiceQuestion"
                 visible: root.probe && root.probe.canAnswer
                 Layout.fillWidth: true
-                maximumLength: 300
+                maximumLength: 1600
                 placeholderText: "Możesz wpisać lub poprawić pytanie"
                 text: root.probe ? root.probe.question : ""
                 enabled: root.probe && !root.probe.busy

@@ -197,4 +197,4 @@ obsługa błędów oraz plan rozmowy z danymi domu i TTS:
 
 Opcjonalny lokalny agent LFM3 dla Raspberry Pi 5: [instalacja i benchmark](docs/LOCAL_AGENT_PI.md).
 
-Rozmowa przez głośnik i hasło „Gugu gaga”: [obsługa i ograniczenia](docs/HANDSFREE_VOICE.md).
+Rozmowa przez głośnik i hasło „klopsy”: [obsługa i ograniczenia](docs/HANDSFREE_VOICE.md).

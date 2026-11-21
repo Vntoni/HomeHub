@@ -52,7 +52,7 @@ async def test_grounded_values_followup_expiry_and_outage():
     client.classify.return_value = {'kind': 'wilgotnosc', 'room': 'lazienka'}
     assert 'brak danych' in (await agent.answer('A wilgotność?')).answer
     assert client.classify.call_args.args[1] == {'kind': 'temperatura', 'room': 'lazienka'}
-    now[0] = 200
+    now[0] = 400
     await agent.answer('A wilgotność?')
     assert client.classify.call_args.args[1] is None
     client.classify.side_effect = TimeoutError()
@@ -106,3 +106,56 @@ async def test_close_before_async_answer_starts():
     await probe.aclose()
     answerer.assert_not_awaited()
     assert not probe.answer
+
+
+@pytest.mark.parametrize('text', [
+    'Proszę powiedz mi jaka jest temperatura w salonie',
+    'Proszę, czy możesz mi powiedzieć, jaka jest temperatura w salonie?',
+    'Czy mógłbyś mi powiedzieć jaka jest temperatura w salonie?',
+])
+async def test_stacked_polite_introductions_take_fast_path(text):
+    client = AsyncMock()
+    cache = ReadOnlyHomeQueries()
+    cache.indoor('salon', 21.5)
+    agent = LocalHomeAgent(cache, client)
+    assert '21,5' in (await agent.answer(text)).answer
+    client.classify.assert_not_called()
+
+
+async def test_unclear_reading_asks_then_keeps_room_for_reply():
+    client = AsyncMock()
+    client.classify.side_effect = [{'kind': 'clarify', 'room': 'salon'},
+                                   {'kind': 'temperatura', 'room': 'salon'}]
+    cache = ReadOnlyHomeQueries()
+    cache.indoor('salon', 22)
+    agent = LocalHomeAgent(cache, client)
+    reply = await agent.answer('Jak tam w salonie?')
+    assert 'Co chcesz sprawdzić w salonie' in reply.answer
+    reply = await agent.answer('Chodzi mi o temperaturę')
+    assert '22,0' in reply.answer
+    assert client.classify.call_args.args[1] == {'kind': 'clarify', 'room': 'salon'}
+
+
+async def test_two_readings_and_long_natural_question_use_real_values():
+    client = AsyncMock()
+    client.classify.return_value = {'kind': 'klimat', 'room': 'lazienka'}
+    cache = ReadOnlyHomeQueries()
+    cache.sensor('lazienka', 'temperature', 20.6)
+    cache.sensor('lazienka', 'humidity', 65)
+    agent = LocalHomeAgent(cache, client)
+    text = 'Wiesz co, mam do ciebie takie pytanie, ' * 10 + 'sprawdź temperaturę i wilgotność w łazience.'
+    reply = await agent.answer(text)
+    client.classify.assert_awaited_once_with(text, None)
+    assert '20,6' in reply.answer and '65,0' in reply.answer
+
+
+async def test_expired_clarification_does_not_supply_old_room():
+    now = [1]
+    client = AsyncMock()
+    client.classify.return_value = {'kind': 'clarify', 'room': 'salon'}
+    agent = LocalHomeAgent(ReadOnlyHomeQueries(), client, clock=lambda: now[0])
+    await agent.answer('Jak tam?')
+    now[0] += 301
+    client.classify.return_value = {'kind': 'wilgotnosc', 'room': 'unknown'}
+    assert 'pomieszczenie' in (await agent.answer('Chodzi mi o wilgotność')).answer
+    assert client.classify.call_args.args[1] is None

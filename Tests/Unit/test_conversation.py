@@ -15,12 +15,12 @@ from Ports.audio_probe import PcmFormat
 from Tests.fake_audio_probe import FakeAudioProbe
 
 
-@pytest.mark.parametrize('text', ['Gugu gaga', 'GUGU, GAGA!', 'Gugugaga.', '  gugu   gaga  '])
+@pytest.mark.parametrize('text', ['Klopsy', 'KLOPSY!', 'Klopsy.', '  klopsy  '])
 def test_toggle_phrase(text):
     assert is_toggle(text)
 
 
-@pytest.mark.parametrize('text', ['', 'gaga', 'Google gaga', 'Powiedz gugu gaga', 'gugu gaga jaka temperatura', None])
+@pytest.mark.parametrize('text', ['', 'gaga', 'Google gaga', 'Powiedz klopsy', 'klopsy jaka temperatura', None])
 def test_other_words_do_not_toggle(text):
     assert not is_toggle(text)
 
@@ -52,7 +52,7 @@ def test_resampling_and_extended_whisper_limit():
     result = array('h', resample_pcm(pcm, source, target))
     assert len(result) == 9600 and set(result) == {1000}
     long = b'\0' * source.bytes_per_second * 10
-    assert wav_bytes(long, source, max_seconds=12)
+    assert wav_bytes(long, source, max_seconds=30)
     with pytest.raises(ValueError): wav_bytes(long, source)
 
 
@@ -64,7 +64,7 @@ async def until(check):
 
 def utterance(audio):
     audio.data(array('h', [3000, -3000] * 2400).tobytes())
-    audio.data(b'\0' * 22400)
+    audio.data(b'\0' * 40000)
 
 
 @pytest.fixture
@@ -86,7 +86,7 @@ def setup_conversation():
 async def test_wake_question_spoken_reply_and_same_phrase_sleep(app):
     conv, audio, stt, tts, answer = setup_conversation()
     stt.transcribe.side_effect = [Transcription(t, .1) for t in
-        ['Telewizor w tle', 'Gugu gaga', 'Jak ciepło jest w łazience?', 'Gugu gaga']]
+        ['Telewizor w tle', 'Klopsy', 'Jak ciepło jest w łazience?', 'Klopsy']]
     try:
         await until(lambda: audio.records == 1)
         utterance(audio)
@@ -134,7 +134,7 @@ async def test_stop_cancels_transcription_and_never_speaks_late(app):
 
 async def test_stop_during_playback_and_disconnect(app):
     conv, audio, stt, tts, answer = setup_conversation()
-    stt.transcribe.return_value = Transcription('gugu gaga', .1)
+    stt.transcribe.return_value = Transcription('klopsy', .1)
     await until(lambda: audio.records == 1)
     utterance(audio)
     await until(lambda: audio.plays == 1)
@@ -153,7 +153,7 @@ async def test_close_before_coroutine_start_releases_audio(app):
 
 async def test_speech_failure_stops_capture(app):
     conv, audio, stt, tts, answer = setup_conversation()
-    stt.transcribe.return_value = Transcription('Gugu gaga', .1)
+    stt.transcribe.return_value = Transcription('Klopsy', .1)
     tts.synthesize.side_effect = RuntimeError('worker failed')
     await until(lambda: audio.records == 1)
     utterance(audio)
@@ -215,3 +215,17 @@ async def test_repeated_stop_does_not_interrupt_worker_cleanup(app):
     await asyncio.gather(conv._task, return_exceptions=True)
     assert finished.is_set()
     await conv.aclose()
+
+
+def test_question_allows_thinking_pause_and_thirty_second_audio():
+    fmt = PcmFormat(16000, 1)
+    vad = UtteranceBuffer(fmt, max_seconds=30, silence_seconds=1.2)
+    sound = array('h', [3000, -3000] * 2400).tobytes()
+    assert vad.feed(sound) is None
+    assert vad.feed(b'\0' * 28800) is None  # 900ms inside a sentence
+    assert vad.feed(sound) is None
+    pcm, too_long = vad.feed(b'\0' * 40000)
+    assert not too_long
+    assert wav_bytes(b'\0' * fmt.bytes_per_second * 29, fmt, max_seconds=30)
+    with pytest.raises(ValueError):
+        wav_bytes(b'\0' * fmt.bytes_per_second * 31, fmt, max_seconds=30)

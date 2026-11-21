@@ -7,15 +7,18 @@ import re
 
 def is_toggle(text):
     # Punctuation/spacing can vary in Whisper; do not fuzzy-match other words.
-    return isinstance(text, str) and re.sub(r'[\W_]+', '', text.casefold()) == 'gugugaga'
+    return isinstance(text, str) and re.sub(r'[\W_]+', '', text.casefold()) == 'klopsy'
 
 
 class UtteranceBuffer:
-    def __init__(self, fmt, threshold=.008, max_seconds=12):
+    def __init__(self, fmt, threshold=.008, max_seconds=30, silence_seconds=.7):
         if not 8000 <= fmt.rate <= 96000 or not 1 <= fmt.channels <= 4:
             raise ValueError('Unsupported audio format')
         self.frame_size = (fmt.rate // 50) * fmt.frame_bytes  # 20 ms
         self.threshold = threshold
+        if not .1 <= silence_seconds <= 3 or not 1 <= max_seconds <= 30:
+            raise ValueError("Invalid utterance timing")
+        self.silence_frames = round(silence_seconds * 50)
         self.max_frames = int(max_seconds * 50)
         self.pending = bytearray()
         self.preroll = deque(maxlen=12)
@@ -43,7 +46,7 @@ class UtteranceBuffer:
             self.voiced += int(speech)
             self.quiet = 0 if speech else self.quiet + 1
             too_long = len(self.frames) >= self.max_frames
-            if self.quiet >= 35 or too_long:
+            if self.quiet >= self.silence_frames or too_long:
                 result = b''.join(self.frames) if self.voiced >= 10 else None
                 self.frames, self.voiced, self.quiet = [], 0, 0
                 if result is not None:

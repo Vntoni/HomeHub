@@ -24,11 +24,11 @@ class Transcription:
 
 
 def wav_bytes(pcm, fmt, max_seconds=5):
-    if not 1 <= max_seconds <= 12:
+    if not 1 <= max_seconds <= 30:
         raise ValueError("Invalid audio duration limit")
     if not (8000 <= fmt.rate <= 96000 and 1 <= fmt.channels <= 4):
         raise ValueError("Invalid PCM format")
-    if not pcm or len(pcm) > min(12 * 1024 * 1024, fmt.bytes_per_second * max_seconds) or len(pcm) % fmt.frame_bytes:
+    if not pcm or len(pcm) > min(24 * 1024 * 1024, fmt.bytes_per_second * max_seconds) or len(pcm) % fmt.frame_bytes:
         raise ValueError("Invalid PCM length")
     if sys.byteorder != "little":
         samples = array('h', pcm)

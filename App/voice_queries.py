@@ -61,10 +61,17 @@ def edit_distance(left, right):
 def question_words(text):
     words = re.findall(r'\w+', normalize(text))
     # Only remove explicit polite introductions, never negation or commands.
-    for prefix in (['czy', 'mozesz', 'mi', 'powiedziec'], ['mozesz', 'mi', 'powiedziec'],
-                   ['powiedz', 'mi'], ['prosze']):
-        if words[:len(prefix)] == prefix:
-            return words[len(prefix):]
+    prefixes = (
+        ['czy', 'moglbys', 'mi', 'powiedziec'], ['czy', 'moglabys', 'mi', 'powiedziec'],
+        ['czy', 'mozesz', 'mi', 'powiedziec'], ['mozesz', 'mi', 'powiedziec'],
+        ['powiedz', 'mi'], ['powiedz'], ['prosze'],
+    )
+    # Introductions can stack: "proszę, powiedz mi...".
+    while words:
+        prefix = next((p for p in prefixes if words[:len(p)] == p), None)
+        if prefix is None:
+            break
+        words = words[len(prefix):]
     return words
 
 
