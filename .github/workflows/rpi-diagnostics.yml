@@ -58,9 +58,11 @@ jobs:
                   'messages': [{'role': 'system', 'content': PROMPT + '\nPrevious intent: {"kind":"unknown","room":"unknown"}'},
                                {'role':'user','content':'Jak ciepło jest w salonie?'}],
                   'cache_prompt': True}
-              response = client.post('http://127.0.0.1:9081/v1/chat/completions', json=payload)
-              print('HTTP:', response.status_code)
-              print('Synthetic response:', response.text[:2500])
+              for question in ['Jak ciepło jest w salonie?', 'Proszę powiedz mi jaka jest temperatura w salonie', 'Sprawdź wilgotność']:
+                  payload['messages'][-1]['content'] = question
+                  response = client.post('http://127.0.0.1:9081/v1/chat/completions', json=payload)
+                  print('Question:', question, 'HTTP:', response.status_code)
+                  print('Synthetic response:', response.text[:2500])
           PYTHON
       - name: Benchmark candidate model client without changing app configuration
         if: inputs.benchmark

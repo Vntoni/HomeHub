@@ -88,6 +88,12 @@ async def run(args):
         times.append(elapsed)
         rows.append(dict(question=text, previous=previous, expected=expected, actual=actual,
                          correct=actual == expected, seconds=round(elapsed, 3), error=error))
+        # Keep partial evidence if a long hardware run is interrupted.
+        args.output.write_text(json.dumps(dict(label=args.label, before=before, cases=rows,
+            correct=sum(r['correct'] for r in rows), total=len(rows), incomplete=True),
+            ensure_ascii=False, indent=2) + '\n')
+        if actual != expected:
+            print(f'  expected={expected}; actual={actual}; error={error}', flush=True)
         print(f'{index:02d}: {"OK" if actual == expected else "FAIL"} {elapsed:.2f}s — {text}', flush=True)
     report = dict(label=args.label, platform=platform.platform(), before=before, after=memory(),
                   correct=sum(r['correct'] for r in rows), total=len(rows),
