@@ -26,7 +26,8 @@ class Device:
 def adapter(monkeypatch):
     mic, other, speaker = Device("ReSpeaker Lite", b'usb-mic'), Device("Laptop microphone", b'other'), Device("ReSpeaker speaker", b'usb-speaker')
     devices = Mock(audioInputs=Mock(return_value=[other, mic]), audioOutputs=Mock(return_value=[speaker]),
-                   audioInputsChanged=Signal(), audioOutputsChanged=Signal())
+                   audioInputsChanged=Signal(), audioOutputsChanged=Signal(),
+                   defaultAudioOutput=Mock(return_value=speaker))
     monkeypatch.setattr(audio, "QMediaDevices", lambda: devices)
     sources, sinks = [], []
     class Source:
@@ -127,11 +128,16 @@ def test_playback_uses_explicit_output_memory_and_immediate_reset(adapter):
     assert done.call_count == 1
 
 
-def test_removed_device_or_unsupported_output_does_not_fallback(adapter):
+def test_resamples_piper_on_selected_output_and_never_switches_device(adapter):
     probe, devices, sources, sinks, changed = adapter
+    probe.play(b'usb-speaker'.hex(), b'\0\0', PcmFormat(16000, 1), Mock(), Mock())
+    assert bytes(sinks[0].buffer.readAll()) == b'\0' * 12
+    assert sinks[0].device.key == b'usb-speaker'
+    probe.stop()
+    devices.audioOutputs.return_value = []
     with pytest.raises(ValueError):
         probe.play(b'usb-speaker'.hex(), b'\0\0', PcmFormat(16000, 1), Mock(), Mock())
     devices.audioInputs.return_value = []
     with pytest.raises(ValueError):
         probe.record(b'usb-mic'.hex(), Mock(), Mock())
-    assert sources == sinks == []
+    assert not sources and len(sinks) == 1

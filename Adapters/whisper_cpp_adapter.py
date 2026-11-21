@@ -23,10 +23,12 @@ class Transcription:
     seconds: float
 
 
-def wav_bytes(pcm, fmt):
+def wav_bytes(pcm, fmt, max_seconds=5):
+    if not 1 <= max_seconds <= 12:
+        raise ValueError("Invalid audio duration limit")
     if not (8000 <= fmt.rate <= 96000 and 1 <= fmt.channels <= 4):
         raise ValueError("Invalid PCM format")
-    if not pcm or len(pcm) > min(4 * 1024 * 1024, fmt.bytes_per_second * 5) or len(pcm) % fmt.frame_bytes:
+    if not pcm or len(pcm) > min(12 * 1024 * 1024, fmt.bytes_per_second * max_seconds) or len(pcm) % fmt.frame_bytes:
         raise ValueError("Invalid PCM length")
     if sys.byteorder != "little":
         samples = array('h', pcm)
@@ -42,11 +44,12 @@ def wav_bytes(pcm, fmt):
 
 
 class WhisperCppAdapter:
-    def __init__(self, executable, model, *, spawn=None, timeout=60, prompt=HOME_VOCABULARY):
+    def __init__(self, executable, model, *, spawn=None, timeout=60, prompt=HOME_VOCABULARY, max_seconds=5):
         self.executable, self.model = Path(executable).expanduser(), Path(model).expanduser()
         self._spawn = spawn or asyncio.create_subprocess_exec
         self._timeout = timeout
         self.prompt = prompt
+        self.max_seconds = max_seconds
 
     @property
     def profile_label(self):
@@ -74,7 +77,7 @@ class WhisperCppAdapter:
     async def transcribe(self, pcm, fmt):
         if not self.available():
             raise FileNotFoundError("Local speech runtime unavailable")
-        audio = wav_bytes(pcm, fmt)
+        audio = wav_bytes(pcm, fmt, self.max_seconds)
         # With stdin input, whisper.cpp disables its segment-print callback.
         # Explicit text output is required even when the process exits cleanly.
         args = [str(self.executable), '-m', str(self.model), '-l', 'pl', '-t', '2',

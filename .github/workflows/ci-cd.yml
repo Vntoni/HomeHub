@@ -118,6 +118,12 @@ jobs:
           ~/.virtualenvs/Baza_Domowa/bin/python Tools/install_voice_runtime.py
           ~/.virtualenvs/Baza_Domowa/bin/python Tools/voice_runtime_smoke.py
 
+      - name: Prepare local Polish speech output
+        timeout-minutes: 10
+        run: |
+          ~/.virtualenvs/Baza_Domowa/bin/python Tools/install_tts_runtime.py
+          ~/.virtualenvs/Baza_Domowa/bin/python Tools/voice_conversation_smoke.py
+
       - name: Preserve application configuration
         shell: bash
         run: |

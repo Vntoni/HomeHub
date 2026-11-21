@@ -147,6 +147,9 @@ async def run():
             while not popup.property("opened"):
                 await asyncio.sleep(.01)
         assert popup.property("opened") and not backend.audioProbe.busy
+        await asyncio.sleep(.1)
+        assert find(popup, "toggleConversation").property("text") == "Włącz nasłuch hasła"
+        screenshot(window, f"00-conversation-controls-{width}x{height}")
         assert not find(popup, "recordAudioProbe").property("enabled")
         find(popup, "audioInputSelector").setProperty("currentIndex", 0)
         find(popup, "audioOutputSelector").setProperty("currentIndex", 0)

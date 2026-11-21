@@ -20,7 +20,9 @@ from App.operations import run_blocking
 from App.lifecycle import build_with_resources
 from Adapters.respeaker_usb_adapter import RespeakerUsbAdapter
 from App.respeaker_service import RespeakerService
-from Adapters.whisper_cpp_adapter import WhisperCppAdapter
+from Adapters.whisper_cpp_adapter import WhisperCppAdapter, HOME_VOCABULARY
+from Adapters.piper_tts import PiperTts
+from PySide6.QtCore import QSettings
 
 
 def create_audio_probe(on_devices_changed):
@@ -202,7 +204,10 @@ async def _build_backend(resources) -> QtHomeBackend:
                             audio_factory=create_audio_probe,
                             transcriber=WhisperCppAdapter(s.whisper_cli, s.whisper_model),
                             energy_service=production_energy(),
-                            local_agent_enabled=s.local_agent_enabled)
+                            local_agent_enabled=s.local_agent_enabled,
+                            conversation_transcriber=WhisperCppAdapter(s.whisper_cli, s.whisper_model,
+                                max_seconds=12, prompt=HOME_VOCABULARY + " Hasło: Gugu gaga."),
+                            speaker=PiperTts(), voice_preferences=QSettings("HomeHub", "VoiceConversation"))
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
 
     # --- Pogoda Open-Meteo (polling w tle) ---
