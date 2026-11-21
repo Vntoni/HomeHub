@@ -60,3 +60,16 @@ async def test_short_social_replies_do_not_call_model_or_lose_room():
     assert agent.previous == {'kind':'clarify', 'room':'salon'}
     assert 'Cześć' in (await agent.answer('Hej')).answer
     model.classify.assert_not_called()
+
+
+@pytest.mark.parametrize('text', ['Jaka temperatura na tarasie?', 'Ile stopni w szklarni?',
+                                 'Sprawdź temperaturę w nowym pokoju'])
+def test_new_unknown_place_never_inherits_previous_room(text):
+    answer = resolve(text, {'kind':'wilgotnosc','room':'salon'})
+    assert answer['room'] == 'unknown'
+
+
+def test_same_room_and_time_phrases_keep_context():
+    previous = {'kind':'temperatura','room':'salon'}
+    assert resolve('A wilgotność w tym samym pokoju?', previous)['room'] == 'salon'
+    assert resolve('Jaka wilgotność w tej chwili?', previous)['room'] == 'salon'

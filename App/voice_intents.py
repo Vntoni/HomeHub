@@ -10,7 +10,7 @@ ROOM_PATTERNS = {
     'lazienka': r'\blazien\w*\b',
 }
 UNSUPPORTED = (r'\b(?:sypial\w*|kuch\w*|garaz\w*|gabinet\w*|piwnic\w*|korytarz\w*|'
-               r'grzejnik\w*|kaloryfer\w*|bojler\w*|boiler\w*|ariston\w*|pralk\w*|'
+               r'taras\w*|balkon\w*|biur\w*|kotlown\w*|poddasz\w*|grzejnik\w*|kaloryfer\w*|bojler\w*|boiler\w*|ariston\w*|pralk\w*|'
                r'prad\w*|energ\w*|zuzyc\w*|pogod\w*|deszcz\w*|zewn\w*|hasl\w*|password|token|'
                r'ustaw\w*|nastaw\w*|docelow\w*|zadan(?:a|ej|e|y|ego)|zignoruj|ignoruj|instrukcj\w*)\b')
 COMMANDS = {'wlacz', 'wylacz', 'wlaczaj', 'wylaczaj', 'wlaczyc', 'wylaczyc',
@@ -46,7 +46,11 @@ def resolve(text, previous=None):
     if len(rooms) > 1:
         room = 'unknown'  # Always ask instead of choosing an arbitrary room.
     elif not rooms and previous.get('room') in ROOM_PATTERNS:
-        room = previous['room']
+        # A new, unrecognized place must not silently become the previous room.
+        elsewhere = re.search(r'\b(?:w|we|na)\s+(?!tej chwili\b|tym momencie\b|'
+                              r'tym samym pokoj\w*\b|ogole\b|przyklad\b|temat\b|teraz\b)\w+', normalized)
+        if not elsewhere:
+            room = previous['room']
     if kinds == {'temperatura', 'wilgotnosc'}:
         return intent('klimat', room)
     if len(kinds) == 1:
