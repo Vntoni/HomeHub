@@ -224,7 +224,7 @@ class ConversationController(QObject):
         if self._adapter:
             self._adapter.close()
             self._adapter = None
-        if self._task and not self._task.done():
+        if self._task and not self._task.done() and not self._task.cancelling():
             self._task.cancel()
         self._question = self._answer = ''
         self._set('off', 'Nasłuch wyłączony. Mikrofon nie nagrywa.')

@@ -197,3 +197,21 @@ async def test_auto_start_and_manual_off_survive_reconnect(app):
     conv.set_connected(True)
     assert not conv.enabled and audio.records == 1
     await conv.aclose()
+
+
+async def test_repeated_stop_does_not_interrupt_worker_cleanup(app):
+    conv, audio, stt, tts, answer = setup_conversation()
+    started, release, finished = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    async def close():
+        started.set()
+        await release.wait()
+        finished.set()
+    tts.aclose.side_effect = close
+    await until(lambda: audio.records == 1)
+    conv.stop()
+    await started.wait()
+    conv.stop()
+    release.set()
+    await asyncio.gather(conv._task, return_exceptions=True)
+    assert finished.is_set()
+    await conv.aclose()
