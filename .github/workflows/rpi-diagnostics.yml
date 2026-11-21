@@ -32,6 +32,19 @@ jobs:
                   print(str(path), 'HOMEHUB_LOCAL_AGENT:', dotenv_values(path).get('HOMEHUB_LOCAL_AGENT', '(unset)'))
           print('Local model installed:', (home/'.local/share/homehub/agent/LFM3-1.7B-Q4_K_M.gguf').is_file())
           PYTHON
+      - name: Apply candidate model buffers for benchmark only
+        if: inputs.benchmark
+        run: |
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+          install -m 644 deploy/homehub-agent.service "$HOME/.config/systemd/user/homehub-agent.service"
+          systemctl --user daemon-reload
+          systemctl --user restart homehub-agent
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9081/health; then exit 0; fi
+            sleep 2
+          done
+          exit 1
       - name: Probe one synthetic model request
         run: |
           ~/.virtualenvs/Baza_Domowa/bin/python - <<'PYTHON'
