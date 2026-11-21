@@ -19,7 +19,7 @@ if [[ ! -d "$source_dir" ]]; then
 fi
 [[ $(git -C "$source_dir" rev-parse HEAD) == 8642541b255bfb5dc39cd351a178be09013a55d6 ]] || { echo 'Unexpected llama.cpp revision'; exit 1; }
 [[ -z $(git -C "$source_dir" status --porcelain --untracked-files=no) ]] || { echo 'llama.cpp source has local edits'; exit 1; }
-"$cmake_bin" -S "$source_dir" -B "$source_dir/build" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=ON -DGGML_VULKAN=OFF -DLLAMA_CURL=OFF
+"$cmake_bin" -S "$source_dir" -B "$source_dir/build" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=ON -DGGML_VULKAN=OFF -DLLAMA_CURL=OFF -DLLAMA_BUILD_UI=OFF -DLLAMA_USE_PREBUILT_UI=OFF
 "$cmake_bin" --build "$source_dir/build" --target llama-server llama-bench -j 2
 expected=3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4
 if [[ ! -f "$model_file" ]] || [[ $(sha256sum "$model_file" | cut -d ' ' -f 1) != "$expected" ]]; then
