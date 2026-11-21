@@ -7,6 +7,26 @@ jobs:
   diagnose:
     runs-on: self-hosted
     steps:
+      - uses: actions/checkout@v5
+      - name: Read local voice configuration without credentials
+        run: |
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+          systemctl --user show homehub-agent --property=ActiveState,SubState,MemoryCurrent || true
+          ~/.virtualenvs/Baza_Domowa/bin/python - <<'PYTHON'
+          from pathlib import Path
+          from dotenv import dotenv_values
+          import subprocess
+          home = Path.home()
+          environment = subprocess.check_output(['systemctl', '--user', 'show', 'bazadomowa', '-p', 'Environment', '--value'], text=True)
+          import shlex
+          entries = dict(item.split('=', 1) for item in shlex.split(environment) if '=' in item)
+          print('Service HOMEHUB_LOCAL_AGENT:', entries.get('HOMEHUB_LOCAL_AGENT', '(unset)'))
+          for path in [home/'app/BazaDomowa/.env', home/'.config/bazadomowa/.env']:
+              if path.exists():
+                  print(str(path), 'HOMEHUB_LOCAL_AGENT:', dotenv_values(path).get('HOMEHUB_LOCAL_AGENT', '(unset)'))
+          print('Local model installed:', (home/'.local/share/homehub/agent/LFM3-1.7B-Q4_K_M.gguf').is_file())
+          PYTHON
       - name: Read HomeHub service status and recent logs
         shell: bash
         run: |
