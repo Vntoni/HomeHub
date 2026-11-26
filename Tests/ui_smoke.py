@@ -92,6 +92,9 @@ def screenshot(window, name):
 
 async def run():
     backend = await build_demo_backend()
+    from datetime import datetime, timezone
+    backend.weather.update(dict(temp_out=-2.5, weather_code=73, is_day=True,
+                                condition="śnieg", ts=datetime.now(timezone.utc)))
     class UsbProbe:
         state = RespeakerStatus()
         def read_status(self):
@@ -115,6 +118,7 @@ async def run():
     await backend.init_all()
     await asyncio.sleep(0.4)
     assert window.property("isReady")
+    assert find(window, "weatherStatus").property("icon") == "snow"
     microphone = find(window, "microphoneStatus")
     microphone_icon = find(window, "microphoneIcon")
     def icon_ready():

@@ -1,5 +1,6 @@
 from PySide6.QtCore import QObject, Signal, Property
 from Interface.qt_energy import EnergyController
+from Interface.qt_weather import WeatherController
 from Ports.respeaker import RespeakerStatus
 from Interface.qt_audio_probe import AudioProbeController
 from Interface.qt_voice_queries import VoiceQueryBridge
@@ -57,6 +58,10 @@ class ACSettingsBlocked(ValueError):
 
 
 class QtHomeBackend(QObject):
+    @Property(QObject, constant=True)
+    def weather(self):
+        return self._weather
+
     @Property(QObject, constant=True)
     def energy(self):
         return self._energy
@@ -127,6 +132,7 @@ class QtHomeBackend(QObject):
                  conversation_transcriber=None, speaker=None, voice_preferences=None):
         super().__init__()
         self._energy = EnergyController(energy_service, self)
+        self._weather = WeatherController(self)
         self._climate = climate
         self._boiler = boiler
         self._washer = washer
