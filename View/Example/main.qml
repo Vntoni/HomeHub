@@ -34,12 +34,19 @@ ApplicationWindow {
         spacing: 16
         RowLayout {
             Layout.fillWidth: true
+            spacing: 8
             ColumnLayout {
+                Layout.maximumWidth: appWindow.width < 900 ? 160 : 320
                 spacing: 2
                 Label { text: "Dom"; font.pixelSize: 30; font.bold: true }
-                Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : (backend && backend.audioProbe.conversation.enabled ? (backend.audioProbe.conversation.active ? "Rozmowa głosowa aktywna" : "Nasłuch hasła: Klopsy") : "Temperatura i urządzenia"); color: "#a9b8c6"; font.pixelSize: 14 }
+                Label { text: demoMode ? "Tryb demo · symulowane urządzenia" : (backend && backend.audioProbe.conversation.enabled ? (backend.audioProbe.conversation.active ? "Rozmowa głosowa aktywna" : "Nasłuch hasła: Klopsy") : "Temperatura i urządzenia"); color: "#a9b8c6"; font.pixelSize: 14; Layout.fillWidth: true; elide: Text.ElideRight }
             }
             Item { Layout.fillWidth: true }
+            WeatherStatus {
+                weather: backend ? backend.weather : null
+                Layout.preferredWidth: 160
+                Layout.preferredHeight: 64
+            }
             PanelButton {
                 objectName: "openEnergy"
                 text: "Prąd"

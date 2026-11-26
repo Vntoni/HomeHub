@@ -213,14 +213,13 @@ async def _build_backend(resources) -> QtHomeBackend:
     _backend_ref[0] = backend  # teraz callback ma dostęp do backend
 
     # --- Pogoda Open-Meteo (polling w tle) ---
-    if repo:
-        weather_adapter = OpenMeteoAdapter(
-            latitude=s.weather_latitude,
-            longitude=s.weather_longitude,
-            repository=repo,
-            poll_interval_seconds=s.weather_poll_interval_seconds,
-        )
-        backend.register_task(asyncio.create_task(weather_adapter.start_polling(), name="OpenMeteoAdapter.poll"))
-        print(f"✓ Polling pogody Open-Meteo uruchomiony (co {s.weather_poll_interval_seconds}s)")
+    weather_adapter = OpenMeteoAdapter(
+        latitude=s.weather_latitude,
+        longitude=s.weather_longitude,
+        repository=repo,
+        poll_interval_seconds=s.weather_poll_interval_seconds,
+        on_update=backend.weather.update,
+    )
+    backend.register_task(asyncio.create_task(weather_adapter.start_polling(), name="OpenMeteoAdapter.poll"))
 
     return backend

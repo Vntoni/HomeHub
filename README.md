@@ -198,3 +198,14 @@ obsługa błędów oraz plan rozmowy z danymi domu i TTS:
 Opcjonalny lokalny agent LFM3 dla Raspberry Pi 5: [instalacja i benchmark](docs/LOCAL_AGENT_PI.md).
 
 Rozmowa przez głośnik i hasło „klopsy”: [obsługa i ograniczenia](docs/HANDSFREE_VOICE.md).
+
+Pogoda obok przycisku „Prąd” korzysta z Open-Meteo bez klucza API.
+Pobiera aktualne warunki po uruchomieniu i domyślnie co godzinę (24 zapytania/dobę),
+niezależnie od dostępności PostgreSQL. Lokalizację określają `WEATHER_LATITUDE`
+i `WEATHER_LONGITUDE`, odstęp `WEATHER_POLL_INTERVAL` w sekundach (minimum 300).
+To dane pogodowe dla lokalizacji z API, nie pomiar domowego czujnika zewnętrznego.
+Dotknięcie panelu pokazuje opis warunków, czas pobrania i źródło.
+Po błędzie pozostaje ostatni odczyt oznaczony jako nieaktualny; także po dwóch
+ godzinach bez nowych danych. Dane: [Open-Meteo](https://open-meteo.com/), CC BY 4.0.
+Darmowe API dla użytku niekomercyjnego: poniżej 10 000 zapytań na dobę,
+5 000 na godzinę i 600 na minutę ([warunki](https://open-meteo.com/en/terms)).

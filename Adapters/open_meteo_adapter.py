@@ -1,5 +1,6 @@
 """Open-Meteo HTTP adapter and polling; one implementation and one client."""
 import asyncio
+import math
 from datetime import datetime, timezone
 
 import httpx
@@ -10,6 +11,8 @@ _WMO_CODES: dict[int, str] = {
     1:  "przeważnie bezchmurnie", 2: "częściowe zachmurzenie", 3: "pochmurno",
     45: "mgła", 48: "mgła z szronem",
     51: "mżawka lekka", 53: "mżawka", 55: "mżawka gęsta",
+    56: "marznąca mżawka", 57: "marznąca mżawka",
+    66: "marznący deszcz", 67: "marznący deszcz",
     61: "deszcz lekki", 63: "deszcz", 65: "deszcz intensywny",
     71: "śnieg lekki", 73: "śnieg", 75: "śnieg intensywny",
     77: "ziarna śniegu",
@@ -32,12 +35,14 @@ class OpenMeteoAdapter:
         latitude: float,
         longitude: float,
         repository=None,
-        poll_interval_seconds: int = 600,
+        poll_interval_seconds: int = 3600,
+        on_update=None,
     ):
         self._lat = latitude
         self._lon = longitude
         self._repo = repository
-        self._interval = poll_interval_seconds
+        self._interval = max(300, poll_interval_seconds)
+        self._on_update = on_update
         self._latest: dict | None = None
 
     async def fetch(self) -> dict | None:
@@ -45,7 +50,7 @@ class OpenMeteoAdapter:
         params = {
             "latitude": self._lat,
             "longitude": self._lon,
-            "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code",
+            "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,is_day",
             "wind_speed_unit": "ms",
             "timezone": "Europe/Warsaw",
         }
@@ -54,10 +59,15 @@ class OpenMeteoAdapter:
                 r = await client.get(self.API_URL, params=params)
                 r.raise_for_status()
                 data = r.json()["current"]
+                temperature = data["temperature_2m"]
+                if isinstance(temperature, bool) or not isinstance(temperature, (float, int)) or not math.isfinite(temperature):
+                    raise ValueError("Invalid weather temperature")
                 return {
                     "temp_out": data["temperature_2m"],
                     "humidity_out": data["relative_humidity_2m"],
                     "wind_speed": data["wind_speed_10m"],
+                    "weather_code": data["weather_code"],
+                    "is_day": bool(data.get("is_day", 1)),
                     "condition": _WMO_CODES.get(data["weather_code"], "nieznane"),
                     "ts": datetime.now(tz=timezone.utc),
                 }
@@ -79,6 +89,9 @@ class OpenMeteoAdapter:
             weather = await self.fetch()
             if weather:
                 self._latest = weather
+            if self._on_update:
+                self._on_update(weather)
+            if weather:
                 print(
                     f"[OpenMeteo] {weather['temp_out']}°C, "
                     f"{weather['humidity_out']}% RH, "

@@ -36,7 +36,7 @@ class Settings:
     # Pogoda (Open-Meteo – bez klucza API)
     weather_latitude: float = 50.119391   # Rodziny Pganów 74
     weather_longitude: float = 19.803053
-    weather_poll_interval_seconds: int = 3600 # co 30 minut
+    weather_poll_interval_seconds: int = 3600 # co godzinę
     # Czujniki Zigbee – lista pokoi (oddzielone przecinkiem w .env)
     sensor_rooms: str = "salon,jadalnia,lazienka"
     local_agent_enabled: bool = False
